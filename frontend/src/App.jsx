@@ -2,7 +2,7 @@ import React from "react";
 import Navbar from "./Components/Navbar";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
-import Cart from "./pages/cart";
+// import Cart from "./pages/cart";
 import ProductList from "./pages/ProductList";
 
 const App = () => {
@@ -14,9 +14,7 @@ const App = () => {
          <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/product" element={<ProductList />} />
-
-      
-          <Route path="/cart" element={<Cart/>} />
+          {/* <Route path="/cart" element={<Cart/>} /> */}
          </Routes>
       
       </BrowserRouter>

@@ -7,14 +7,18 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Node modules
 node_modules
 
 # Environment files
 .env
 .env.local
 .env.*.local
+.env.production      # ✅ add this explicitly
+.env.production.local
+.env.test.local
 
-
+# Build output
 dist
 dist-ssr
 *.local
