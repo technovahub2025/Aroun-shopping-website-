@@ -2,8 +2,9 @@ import React from "react";
 import Navbar from "./Components/Navbar";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
-// import Cart from "./pages/cart";
 import ProductList from "./pages/ProductList";
+import Cartpages from "./pages/Cartpages";
+import ProductDetails from "./pages/ProductDetails";
 
 const App = () => {
   return (
@@ -14,7 +15,8 @@ const App = () => {
          <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/product" element={<ProductList />} />
-          {/* <Route path="/cart" element={<Cart/>} /> */}
+           <Route path="/products/:id" element={<ProductDetails />} />
+          <Route path="/cart" element={<Cartpages/>} />
          </Routes>
       
       </BrowserRouter>

@@ -1,20 +1,20 @@
 import React, { useEffect, useState, useMemo } from "react";
 import productApi from "../../api/productApi";
-import { FaStar, FaStarHalfAlt, FaRegStar, FaFilter } from "react-icons/fa";
+import { FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaTimes } from "react-icons/fa";
+import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [availableCategories, setAvailableCategories] = useState([]);
   const [availableTypes, setAvailableTypes] = useState([]);
-
   const [categoryFilters, setCategoryFilters] = useState([]);
   const [typeFilters, setTypeFilters] = useState([]);
   const [sortBy, setSortBy] = useState("Relevant");
   const [currentPage, setCurrentPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false); // Mobile toggle
+  const [showFilters, setShowFilters] = useState(false);
 
   const itemsPerPage = 6;
   const sortOptions = ["Relevant", "Price: Low to High", "Price: High to Low", "Newest"];
@@ -24,12 +24,8 @@ const ProductList = () => {
       try {
         const res = await productApi.getAll();
         setProducts(res.data);
-
-        const categories = Array.from(new Set(res.data.flatMap((p) => p.categories || [])));
-        setAvailableCategories(categories);
-
-        const types = Array.from(new Set(res.data.flatMap((p) => p.type ? [p.type] : [])));
-        setAvailableTypes(types);
+        setAvailableCategories(Array.from(new Set(res.data.flatMap(p => p.categories || []))));
+        setAvailableTypes(Array.from(new Set(res.data.flatMap(p => (p.type ? [p.type] : [])))));
       } catch (err) {
         setError(err.response?.data?.message || err.message);
       } finally {
@@ -55,13 +51,8 @@ const ProductList = () => {
 
   const filteredAndSortedProducts = useMemo(() => {
     let temp = [...products];
-
-    if (categoryFilters.length > 0) {
-      temp = temp.filter(p => categoryFilters.some(f => p.categories.includes(f)));
-    }
-    if (typeFilters.length > 0) {
-      temp = temp.filter(p => typeFilters.some(f => p.type === f));
-    }
+    if (categoryFilters.length > 0) temp = temp.filter(p => categoryFilters.some(f => p.categories.includes(f)));
+    if (typeFilters.length > 0) temp = temp.filter(p => typeFilters.some(f => p.type === f));
 
     switch (sortBy) {
       case "Price: Low to High":
@@ -76,13 +67,11 @@ const ProductList = () => {
       default:
         break;
     }
-
     return temp;
   }, [products, categoryFilters, typeFilters, sortBy]);
 
   const indexOfLast = currentPage * itemsPerPage;
-  const indexOfFirst = indexOfLast - itemsPerPage;
-  const currentProducts = filteredAndSortedProducts.slice(indexOfFirst, indexOfLast);
+  const currentProducts = filteredAndSortedProducts.slice(indexOfLast - itemsPerPage, indexOfLast);
   const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
 
   const renderStars = (rating) => {
@@ -99,27 +88,28 @@ const ProductList = () => {
   if (error) return <p className="text-center text-red-500 py-20">Error: {error}</p>;
 
   return (
-    <div className="max-w-9xl mx-auto px-4 py-6">
-          <h1 className="text-xl md:text-3xl md:mb-4 font-bold text-gray-800 mb-3">ALL Products</h1>
-      <div className="flex justify-between items-center mb-4">
-      
-
-        <div className="flex items-center gap-2">
-          {/* Mobile filter toggle */}
+    <div className="max-w-7xl mx-auto px-4 py-10">
+      {/* Header */}
+      <div>
+         <h1 className="text-xl font-bold text-gray-800 mb-6">All Products</h1>
+      </div>
+      <div className="flex justify-between items-center mb-6">
+       
+        <div className="flex items-center gap-3">
+          {/* Mobile Filter Button */}
           <button
-            className="sm:hidden flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-lg shadow"
-            onClick={() => setShowFilters(!showFilters)}
+            className="sm:hidden flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg shadow hover:bg-red-600 transition"
+            onClick={() => setShowFilters(true)}
           >
             <FaFilter /> Filters
           </button>
 
-          <label className="text-sm text-gray-600 mr-2 hidden sm:block">Sort by:</label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="border-none  px-3 py-2 rounded-lg text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-red-400 cursor-pointer"
+            className="border border-gray-300 px-3 py-2 rounded-lg text-sm shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer"
           >
-            {sortOptions.map((option) => (
+            {sortOptions.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}
           </select>
@@ -128,97 +118,127 @@ const ProductList = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         {/* Sidebar Filters */}
-        <aside className={`md:col-span-3 border-none shadow-lg p-10 pr-6 sticky top-0 h-full ${showFilters ? "block" : "hidden"} md:block bg-white z-10`}>
-          <h2 className="text-lg font-bold mb-4 text-gray-800">FILTER</h2>
+        <AnimatePresence>
+          {(showFilters || window.innerWidth >= 768) && (
+            <motion.aside
+              key="filters"
+              initial={{ x: -300, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -300, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed md:static top-0 left-0 md:col-span-3 w-72 md:w-auto h-full md:h-auto bg-white shadow-2xl md:shadow-lg p-6 rounded-none md:rounded-2xl z-50 overflow-y-auto"
+            >
+              {/* Mobile Close Button */}
+              <div className="flex justify-between items-center mb-4 md:hidden">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <FaFilter className="text-red-500" /> Filters
+                </h2>
+                <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-red-500">
+                  <FaTimes size={20} />
+                </button>
+              </div>
 
-          {availableCategories.length > 0 && (
-            <div className="mb-6 border p-3 rounded-lg">
-              <h3 className="font-semibold mb-2">CATEGORIES</h3>
-              {availableCategories.map(cat => (
-                <div key={cat} className="flex items-center mb-1">
-                  <input
-                    type="checkbox"
-                    id={`cat-${cat}`}
-                    checked={categoryFilters.includes(cat)}
-                    onChange={() => handleCategoryChange(cat)}
-                    className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
-                  />
-                  <label htmlFor={`cat-${cat}`} className="ml-2 text-sm text-gray-700 cursor-pointer">{cat}</label>
-                </div>
-              ))}
-            </div>
-          )}
+              {/* Desktop Title */}
+              <h2 className="text-lg font-bold mb-4 text-gray-800 hidden md:flex items-center gap-2">
+                <FaFilter className="text-red-500" /> Filters
+              </h2>
 
-          {availableTypes.length > 0 && (
-            <div className="mb-6 border p-3 rounded-lg">
-              <h3 className="font-semibold mb-2">TYPE</h3>
-              {availableTypes.map(type => (
-                <div key={type} className="flex items-center mb-1">
-                  <input
-                    type="checkbox"
-                    id={`type-${type}`}
-                    checked={typeFilters.includes(type)}
-                    onChange={() => handleTypeChange(type)}
-                    className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500 cursor-pointer"
-                  />
-                  <label htmlFor={`type-${type}`} className="ml-2 text-sm text-gray-700 cursor-pointer">{type}</label>
+              {/* Categories */}
+              {availableCategories.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold mb-2 text-gray-700">Categories</h3>
+                  {availableCategories.map(cat => (
+                    <label key={cat} className="flex items-center mb-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={categoryFilters.includes(cat)}
+                        onChange={() => handleCategoryChange(cat)}
+                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
+                      />
+                      <span className="ml-2">{cat}</span>
+                    </label>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+
+              {/* Types */}
+              {availableTypes.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2 text-gray-700">Type</h3>
+                  {availableTypes.map(type => (
+                    <label key={type} className="flex items-center mb-2 text-sm text-gray-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={typeFilters.includes(type)}
+                        onChange={() => handleTypeChange(type)}
+                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
+                      />
+                      <span className="ml-2">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </motion.aside>
           )}
-        </aside>
+        </AnimatePresence>
 
         {/* Product Grid */}
         <main className="md:col-span-9">
           {filteredAndSortedProducts.length === 0 ? (
-            <p className="text-center text-gray-500 py-10">No products found matching your filters.</p>
+            <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3 md:gap-10">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
               {currentProducts.map(product => (
-                <div key={product._id} className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:scale-105 duration-300">
-                  <div className="relative">
+                <Link
+                  key={product._id}
+                  to={`/products/${product._id}`}
+                  className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+                >
+                  <div className="relative bg-gray-50 flex items-center justify-center aspect-[4/3] overflow-hidden">
                     <img
                       src={product.images?.[0] || "/placeholder.png"}
                       alt={product.name}
-                      className="w-[300px] h-[100px] md:w-[600px] md:h-[400px] object-cover "
+                      className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
-                  <div className="p-3 text-center">
-                    <h2 className="text-sm font-medium mb-1 text-gray-800 line-clamp-2">{product.name}</h2>
 
-                   
+                  <div className="p-4 text-center">
+                    <h3 className="text-base font-semibold text-gray-800 line-clamp-2 mb-1">
+                      {product.name}
+                    </h3>
 
-                    {/* Type Badge */}
                     {product.type && (
-                      <div className="flex justify-center mb-1">
-                        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
-                          {product.type}
-                        </span>
-                      </div>
+                      <span className="inline-block bg-red-100 text-red-600 text-xs font-semibold px-3 py-1 rounded-full mb-2">
+                        {product.type}
+                      </span>
                     )}
 
-                    <div className="flex justify-center items-center mb-1 text-xs">
+                    <div className="flex justify-center items-center mb-1">
                       {renderStars(product.rating || 0)}
-                      <span className="ml-1 text-gray-600 text-[10px]">{product.rating?.toFixed(1)}</span>
+                      <span className="ml-1 text-gray-500 text-xs">
+                        {product.rating?.toFixed(1)}
+                      </span>
                     </div>
 
-                    <p className="font-semibold text-base text-gray-900">₹{product.price}</p>
+                    <p className="text-lg font-semibold text-red-600">
+                      ₹{product.price?.toLocaleString()}
+                    </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-3 mt-10">
+            <div className="flex justify-center items-center gap-2 mt-10">
               {Array.from({ length: totalPages }, (_, i) => (
                 <button
                   key={i + 1}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`px-4 py-2 rounded-lg font-medium transition ${
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     currentPage === i + 1
-                      ? "bg-red-500 text-white shadow-lg"
+                      ? "bg-red-500 text-white shadow-md"
                       : "bg-gray-200 hover:bg-red-400 hover:text-white"
                   }`}
                 >

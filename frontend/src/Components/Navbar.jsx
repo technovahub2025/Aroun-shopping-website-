@@ -2,15 +2,19 @@ import React, { useState, useEffect } from "react";
 import { ShoppingCart, Search, MapPin, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import Logo from "../assets/newlogo.jpg";
-import Auth from "./../Components/Auth.jsx";
+import Auth from "./Auth.jsx";
 import API from "../../api/apiClient";
 import { toast } from "react-toastify";
+import { useSelector, useDispatch } from "react-redux";
+import { setUser, clearUser } from "../redux/userSlice.js";
 
 const Navbar = () => {
   const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [user, setUser] = useState(null);
+
+  const user = useSelector((state) => state.user.user);
+  const dispatch = useDispatch();
 
   const toggleLoginModal = () => setShowLoginModal(!showLoginModal);
 
@@ -23,18 +27,18 @@ const Navbar = () => {
     const checkLogin = async () => {
       try {
         const { data } = await API.get("/auth/me");
-        setUser(data.user);
+        dispatch(setUser(data.user));
       } catch {
-        setUser(null);
+        dispatch(clearUser());
       }
     };
     checkLogin();
-  }, []);
+  }, [dispatch]);
 
   const handleLogout = async () => {
     try {
       await API.post("/auth/logout");
-      setUser(null);
+      dispatch(clearUser());
       toast.success("Logged out successfully!");
     } catch (err) {
       console.error("Logout failed:", err);
@@ -45,59 +49,71 @@ const Navbar = () => {
   return (
     <>
       {/* Sticky Header */}
-      <div className="sticky  top-0 z-50 shadow-md bg-white">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg shadow-md border-b border-gray-100">
         {/* Top Info Bar */}
-        <div className="bg-green-500  text-white text-[8px] md:text-sm px-4 py-1 flex justify-between items-center">
-          <div className="flex  items-center gap-2 md:gap-4">
-            <div className="flex items-center  gap-1 hover:text-yellow-300 transition">
-              <MapPin size={12} />
-              <span className="truncate font-medium">Lawspet, Puducherry</span>
+        <div className="bg-green-400 text-white text-[7px] md:text-sm px-4 py-2 flex justify-between items-center">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-1">
+              <MapPin size={14} />
+              <span className="font-medium">Lawspet, Puducherry</span>
             </div>
-            <div className="flex items-center gap-1 font-bold hover:text-yellow-300 transition">
-              <Phone size={12} />
+            <div className="flex items-center gap-1 font-semibold hover:text-yellow-300 transition">
+              <Phone size={14} />
               <span>+91 9876543210</span>
             </div>
           </div>
-          <div className="text-[8px] md:text-xs font-semibold uppercase">
-            Free Shipping on Orders Over ₹500
-          </div>
+          <p className="text-[8px] md:text-sm font-semibold uppercase tracking-wide">
+            🚚 Free Shipping on Orders Over ₹500
+          </p>
         </div>
 
         {/* Main Navbar */}
-        <nav className="max-w-9xl mx-auto px-4 py-3 flex justify-between items-center">
+        <nav className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center transform hover:scale-105 transition">
-            <img src={Logo} alt="Logo" className="h-10 md:w-[500px] md:h-[100px] md:h-12 object-contain" />
+          <Link
+            to="/"
+            className="flex items-center gap-2 transform hover:scale-105 transition duration-300"
+          >
+            <img
+              src={Logo}
+              alt="Logo"
+              className="w-[100px] md:w-[200px] object-contain"
+            />
           </Link>
 
+          {/* Search Bar (Desktop) */}
+          <div className="hidden md:flex flex-1 justify-center px-10">
+            <form
+              onSubmit={handleSearch}
+              className="flex items-center w-full max-w-lg bg-white border border-gray-200 rounded-full px-3 py-2 shadow-sm hover:shadow-md focus-within:ring-2 focus-within:ring-red-400 transition"
+            >
+              <input
+                type="text"
+                placeholder="Search for products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 outline-none px-2 py-2 text-gray-700 bg-transparent text-sm"
+              />
+              <button type="submit">
+                <Search
+                  className="text-gray-500 hover:text-red-500 transition"
+                  size={20}
+                />
+              </button>
+            </form>
+          </div>
 
-
- <div className="px-4 py-2 hidden  md:block">
-          <form
-            onSubmit={handleSearch}
-            className="flex items-center w-full  rounded-full px-3 py-2 shadow-sm hover:shadow-md transition"
-          >
-            <input
-              type="text"
-              placeholder="Search for products..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 outline-none px-2 py-1 text-gray-700 bg-transparent"
-            />
-            <button type="submit">
-              <Search className="text-gray-500 hover:text-red-500 transition" size={20} />
-            </button>
-          </form>
-        </div>
-
-
-
-
-
-          {/* Right icons: Cart + Login/User */}
-          <div className="flex items-center gap-3">
-            <Link to="/cart" className="relative">
-              <ShoppingCart className="text-gray-700 hover:text-red-500" size={26} />
+          {/* Right Icons */}
+          <div className="flex items-center gap-4">
+            {/* Cart */}
+            <Link
+              to="/cart"
+              className="relative hover:scale-110 transition-transform"
+            >
+              <ShoppingCart
+                className="text-gray-700 hover:text-red-500"
+                size={26}
+              />
               {cartCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5">
                   {cartCount}
@@ -105,12 +121,15 @@ const Navbar = () => {
               )}
             </Link>
 
+            {/* Auth Buttons */}
             {user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-gray-700 font-medium text-sm">{user.phone}</span>
+              <div className="flex items-center gap-4">
+                <span className="text-gray-700 text-xs md:text-sm bg-red-50 px-3 py-1 rounded-md font-medium">
+                  Hi, {user.phone}
+                </span>
                 <button
                   onClick={handleLogout}
-                  className="bg-gray-200 text-gray-700 px-4 py-1.5 rounded-full hover:bg-gray-300 transition font-medium text-sm"
+                  className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition font-medium text-sm shadow-md"
                 >
                   Logout
                 </button>
@@ -118,7 +137,7 @@ const Navbar = () => {
             ) : (
               <button
                 onClick={toggleLoginModal}
-                className="bg-red-500 text-white px-4 py-1.5 rounded-full hover:bg-red-600 transition font-medium text-sm"
+                className="bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition font-medium text-sm shadow-md"
               >
                 Login
               </button>
@@ -126,43 +145,58 @@ const Navbar = () => {
           </div>
         </nav>
 
-        {/* Full-Width Search Bar */}
-        <div className="px-4 py-2 md:hidden   shadow-inner">
+        {/* Mobile Search */}
+        <div className="px-4 py-2 md:hidden border-t border-gray-100">
           <form
             onSubmit={handleSearch}
-            className="flex items-center w-full  border border-gray-300 rounded-full px-3 py-2 shadow-sm hover:shadow-md transition"
+            className="flex items-center bg-white border border-gray-200 rounded-full px-3 py-2 shadow-sm hover:shadow-md focus-within:ring-2 focus-within:ring-red-400 transition"
           >
             <input
               type="text"
               placeholder="Search for products..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 outline-none px-2 py-1 text-gray-700 bg-transparent"
+              className="flex-1 outline-none px-2 text-gray-700 bg-transparent text-sm"
             />
             <button type="submit">
-              <Search className="text-gray-500 hover:text-red-500 transition" size={20} />
+              <Search
+                className="text-gray-500 hover:text-red-500 transition"
+                size={20}
+              />
             </button>
           </form>
         </div>
 
-        <div className="bg-gray-50 p-2  flex justify-center md:justify-end gap-5 items-center">
-        <Link to="/" className="border-none  shadow-lg px-4 p-2 bg-white    p-1 rounded-md  ">Home</Link>
-        <Link to="/product" className="border-none  shadow-lg px-4 p-2 bg-white    p-1 rounded-md  ">All Products</Link>
+        {/* Bottom Nav */}
+        <div className="border-t  border-gray-200 flex justify-center gap-5 py-2 px-4 flex-wrap">
+          <Link
+            to="/"
+            className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 transition font-medium text-sm"
+          >
+            Home
+          </Link>
 
-      </div>
-      </div>
+          <Link
+            to="/product"
+            className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 transition font-medium text-sm"
+          >
+            All Products
+          </Link>
 
-      
+          {user?.role === "admin" && (
+            <Link
+              to="/admin/dashboard"
+              className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-1.5 rounded-md shadow-sm hover:opacity-90 transition font-medium text-sm"
+            >
+              Dashboard
+            </Link>
+          )}
+        </div>
+      </header>
 
       {/* Login Modal */}
       {showLoginModal && (
-        <Auth
-          toggleLoginModal={toggleLoginModal}
-          onLogin={(userData) => {
-            setUser(userData);
-            toggleLoginModal();
-          }}
-        />
+        <Auth toggleLoginModal={toggleLoginModal} />
       )}
     </>
   );
