@@ -4,7 +4,7 @@ import Logo from "../assets/newlogo.jpg";
 import { sendOtp, verifyOtp } from "../../api/authApi";
 import { toast } from "react-toastify";
 
-const LoginArea = ({ toggleLoginModal, onLogin }) => {
+const Auth = ({ toggleLoginModal, onLogin }) => {
   const [step, setStep] = useState("phone"); 
   const [phone, setPhone] = useState("+91");
   const [otp, setOtp] = useState("");
@@ -128,4 +128,4 @@ const LoginArea = ({ toggleLoginModal, onLogin }) => {
   );
 };
 
-export default LoginArea;
+export default Auth;
