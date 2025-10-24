@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ShoppingCart, Search, MapPin, Phone } from "lucide-react";
 import { Link } from "react-router-dom";
 import Logo from "../assets/newlogo.jpg";
-import Auth from "./../Components/Auth.jsx";
+import LoginArea from "./LoginArea.jsx";
 import API from "../../api/apiClient";
 import { toast } from "react-toastify";
 
@@ -156,7 +156,7 @@ const Navbar = () => {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <Auth
+        <LoginArea
           toggleLoginModal={toggleLoginModal}
           onLogin={(userData) => {
             setUser(userData);
