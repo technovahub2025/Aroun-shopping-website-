@@ -105,7 +105,31 @@ const Navbar = () => {
 
           {/* Right Icons */}
           <div className="flex items-center gap-4">
-            {/* Cart */}
+          
+
+            {/* Auth Buttons */}
+            {user ? (
+              <div className="flex items-center gap-4">
+                <span className="text-gray-700 text-xs md:text-sm bg-red-50 px-3 py-1 rounded-md font-medium">
+                  Hi, {user.phone}
+                </span>
+                <button
+                  onClick={handleLogout}
+                  className="bg-red-500 text-white md:px-4 md:py-2 text-[10px] px-2 py-2 rounded-full hover:bg-red-600 transition font-medium md:text-md shadow-md"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={toggleLoginModal}
+                className="bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition font-medium text-sm shadow-md"
+              >
+                Login
+              </button>
+            )}
+
+              {/* Cart */}
             <Link
               to="/cart"
               className="relative hover:scale-110 transition-transform"
@@ -120,28 +144,6 @@ const Navbar = () => {
                 </span>
               )}
             </Link>
-
-            {/* Auth Buttons */}
-            {user ? (
-              <div className="flex items-center gap-4">
-                <span className="text-gray-700 text-xs md:text-sm bg-red-50 px-3 py-1 rounded-md font-medium">
-                  Hi, {user.phone}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-500 text-white px-4 py-2 rounded-full hover:bg-red-600 transition font-medium text-sm shadow-md"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={toggleLoginModal}
-                className="bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition font-medium text-sm shadow-md"
-              >
-                Login
-              </button>
-            )}
           </div>
         </nav>
 
