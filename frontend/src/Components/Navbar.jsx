@@ -9,11 +9,13 @@ import { useSelector, useDispatch } from "react-redux";
 import { setUser, clearUser } from "../redux/userSlice.js";
 
 const Navbar = () => {
-  const [cartCount, setCartCount] = useState(0);
+  // cart count comes from redux cart slice
+  // const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const user = useSelector((state) => state.user.user);
+  const cartItems = useSelector((state) => state.cart?.items || []);
   const dispatch = useDispatch();
 
   const toggleLoginModal = () => setShowLoginModal(!showLoginModal);
@@ -138,9 +140,9 @@ const Navbar = () => {
                 className="text-gray-700 hover:text-red-500"
                 size={26}
               />
-              {cartCount > 0 && (
+              {cartItems.length > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5">
-                  {cartCount}
+                  {cartItems.reduce((s, it) => s + (it.quantity || 0), 0)}
                 </span>
               )}
             </Link>

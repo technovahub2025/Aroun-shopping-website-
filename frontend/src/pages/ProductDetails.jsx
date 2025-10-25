@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
 import { FaStar, FaStarHalfAlt, FaRegStar, FaArrowLeft } from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import { addToCart } from "../redux/cartSlice";
+import { toast } from "react-toastify";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -10,6 +13,9 @@ const ProductDetails = () => {
   const [mainImage, setMainImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.cart.items || []);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -59,6 +65,16 @@ const ProductDetails = () => {
     fetchRelated();
   }, [product]);
 
+  const handleAddToCart = () => {
+    const exists = cartItems.some((item) => item.id === product._id);
+    if (exists) {
+      toast.info("This product is already in your cart!");
+    } else {
+      dispatch(addToCart({ product, qty: 1 }));
+      toast.success("Added to cart!");
+    }
+  };
+
   if (loading)
     return <p className="text-center text-gray-500 py-20">Loading product...</p>;
   if (error)
@@ -77,10 +93,10 @@ const ProductDetails = () => {
       </Link>
 
       {/* Product Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10  items-start">
         {/* Left: Image Gallery */}
         <div>
-          <div className="w-full h-[450px] bg-gray-100 rounded-2xl overflow-hidden shadow-lg mb-4 flex items-center justify-center">
+          <div className="w-full h-[450px]  rounded-2xl overflow-hidden  mb-4 flex items-center justify-center">
             <img
               src={mainImage}
               alt={product.name}
@@ -110,15 +126,10 @@ const ProductDetails = () => {
 
         {/* Right: Product Info */}
         <div className="space-y-5">
-          {/* Name */}
-          <div>
-           
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
-              {product.title}
-            </h1>
-          </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
+            {product.title}
+          </h1>
 
-            {/* Description */}
           <div>
             <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">
               Description
@@ -129,16 +140,12 @@ const ProductDetails = () => {
             </p>
           </div>
 
-          {/* Rating */}
           <div className="flex items-center space-x-2">
             {renderStars(product.rating || 0)}
             <span className="text-gray-600 text-sm">
               {product.rating?.toFixed(1)}
             </span>
           </div>
-
-
-          
 
           {product.type && (
             <span className="inline-block bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">
@@ -155,27 +162,23 @@ const ProductDetails = () => {
             </p>
           )}
 
-          {/* Price */}
           <p className="text-3xl font-semibold text-red-600">
             ₹{product.price?.toLocaleString()}
           </p>
 
- {/* Price */}
           <p className="text-xl font-semibold text-green-600">
             Stock : {product.stock}
           </p>
 
- 
-        
-
           {/* Buttons */}
           <div className="flex gap-3 mt-6">
-            <button className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition duration-300">
+            <button
+              onClick={handleAddToCart}
+              className="bg-red-500  hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition duration-300"
+            >
               Add to Cart
             </button>
-            <button className="border border-red-500 text-red-500 px-6 py-3 rounded-xl font-semibold hover:bg-red-50 transition duration-300">
-              Buy Now
-            </button>
+          
           </div>
         </div>
       </div>
