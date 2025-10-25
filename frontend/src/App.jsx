@@ -1,14 +1,18 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
-import ProductList from "./pages/ProductList";
-import Cartpages from "./pages/Cartpages";
-import ProductDetails from "./pages/ProductDetails";
-import Navbar from "./components/Navbar";
-import AdminRoute from "./components/AdminRoute";
-import Dashboard from "./pages/admin/Dashboard";
-import DashboardHome from "./pages/admin/DashboardHome";
-import Products from "./pages/admin/Products";
+
+// Components
+import Navbar from "@/components/Navbar";
+import AdminRoute from "@/components/AdminRoute";
+
+// Pages
+import Home from "@/pages/Home";
+import ProductList from "@/pages/ProductList";
+import Cartpages from "@/pages/Cartpages";
+import ProductDetails from "@/pages/ProductDetails";
+import Dashboard from "@/pages/admin/Dashboard";
+import DashboardHome from "@/pages/admin/DashboardHome";
+import Products from "@/pages/admin/Products";
 
 const App = () => {
   return (
