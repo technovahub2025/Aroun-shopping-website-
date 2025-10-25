@@ -1,14 +1,15 @@
 import React from "react";
 import heroImage from "../assets/imglog.avif";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
-    <section className="relative bg-gradient-to-r from-green-50 via-white to-red-50 overflow-hidden">
+    <section className="relative bg-gradient-to-r from-green-50 via-white to-red-50 mt-[-30px] md:mt-0 overflow-hidden">
       {/* Decorative shapes */}
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-green-200 rounded-full mix-blend-multiply opacity-30 animate-pulse"></div>
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-green-300 rounded-full mix-blend-multiply opacity-30 animate-pulse"></div>
 
-      <div className="max-w-7xl   mx-auto px-4 md:px-10 py-20 md:py-32 flex flex-col-reverse md:flex-row items-center gap-10 relative z-10">
+      <div className="max-w-7xl   mx-auto px-4 md:px-10 py-20 md:py-32 flex flex-col md:flex-row items-center gap-10 relative z-10">
         
         {/* Text Content */}
         <div className="flex-1 text-center md:text-left space-y-6">
@@ -20,9 +21,12 @@ const Hero = () => {
           </p>
 
           <div className="flex justify-center md:justify-start gap-4 mt-6">
-            <button className="bg-green-500 text-white px-7 py-3 rounded-full font-semibold shadow-lg hover:bg-green-600 transform hover:scale-105 transition">
+            <Link to="/product">
+             <button className="bg-green-500 text-white px-7 py-3 rounded-full font-semibold shadow-lg hover:bg-green-600 transform hover:scale-105 transition">
               Shop Now
             </button>
+            </Link>
+           
             <button className="bg-white border border-red-500 text-red-500 px-7 py-3 rounded-full font-semibold shadow hover:bg-red-100 transform hover:scale-105 transition">
               Learn More
             </button>
