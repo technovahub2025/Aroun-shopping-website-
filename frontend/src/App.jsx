@@ -1,18 +1,10 @@
 import React from "react";
+import Navbar from "./Components/Navbar";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-// Components
-import Navbar from "@/components/Navbar";
-import AdminRoute from "@/components/AdminRoute";
-
-// Pages
-import Home from "@/pages/Home";
-import ProductList from "@/pages/ProductList";
-import Cartpages from "@/pages/Cartpages";
-import ProductDetails from "@/pages/ProductDetails";
-import Dashboard from "@/pages/admin/Dashboard";
-import DashboardHome from "@/pages/admin/DashboardHome";
-import Products from "@/pages/admin/Products";
+import Home from "./pages/Home";
+import ProductList from "./pages/ProductList";
+import Cartpages from "./pages/Cartpages";
+import ProductDetails from "./pages/ProductDetails";
 
 const App = () => {
   return (
@@ -25,17 +17,6 @@ const App = () => {
           <Route path="/product" element={<ProductList />} />
            <Route path="/products/:id" element={<ProductDetails />} />
           <Route path="/cart" element={<Cartpages/>} />
-          <Route
-  path="/admin/*"
-  element={
-    <AdminRoute>
-      <Dashboard />
-    </AdminRoute>
-  }
->
-  <Route index element={<DashboardHome />} />
-  <Route path="products" element={<Products />} />
-</Route>
          </Routes>
       
       </BrowserRouter>
