@@ -1,11 +1,11 @@
 import React from "react";
-import Navbar from "./Components/Navbar";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import ProductList from "./pages/ProductList";
 import Cartpages from "./pages/Cartpages";
 import ProductDetails from "./pages/ProductDetails";
-import AdminRoute from "./components/AdminRoute";
+import Navbar from "./Components/Navbar";
+import AdminRoute from "./Components/AdminRoute";
 import Dashboard from "./pages/admin/Dashboard";
 import DashboardHome from "./pages/admin/DashboardHome";
 import Products from "./pages/admin/Products";
