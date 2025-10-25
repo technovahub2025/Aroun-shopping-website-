@@ -1,12 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import productApi from "../../api/productApi";
-import {
-  FaStar,
-  FaStarHalfAlt,
-  FaRegStar,
-  FaFilter,
-  FaTimes,
-} from "react-icons/fa";
+import { FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaTimes } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -21,27 +15,17 @@ const ProductList = () => {
   const [sortBy, setSortBy] = useState("Relevant");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
 
   const itemsPerPage = 6;
-  const sortOptions = [
-    "Relevant",
-    "Price: Low to High",
-    "Price: High to Low",
-    "Newest",
-  ];
+  const sortOptions = ["Relevant", "Price: Low to High", "Price: High to Low", "Newest"];
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await productApi.getAll();
         setProducts(res.data);
-        setAvailableCategories(
-          Array.from(new Set(res.data.flatMap((p) => p.categories || [])))
-        );
-        setAvailableTypes(
-          Array.from(new Set(res.data.flatMap((p) => (p.type ? [p.type] : []))))
-        );
+        setAvailableCategories(Array.from(new Set(res.data.flatMap(p => p.categories || []))));
+        setAvailableTypes(Array.from(new Set(res.data.flatMap(p => (p.type ? [p.type] : [])))));
       } catch (err) {
         setError(err.response?.data?.message || err.message);
       } finally {
@@ -51,35 +35,24 @@ const ProductList = () => {
     fetchData();
   }, []);
 
-  // 🧩 Handle responsive resizing
-  useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth >= 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   const handleCategoryChange = (cat) => {
-    setCategoryFilters((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    setCategoryFilters(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
     );
     setCurrentPage(1);
   };
 
   const handleTypeChange = (type) => {
-    setTypeFilters((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    setTypeFilters(prev =>
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
     );
     setCurrentPage(1);
   };
 
   const filteredAndSortedProducts = useMemo(() => {
     let temp = [...products];
-    if (categoryFilters.length > 0)
-      temp = temp.filter((p) =>
-        categoryFilters.some((f) => p.categories.includes(f))
-      );
-    if (typeFilters.length > 0)
-      temp = temp.filter((p) => typeFilters.some((f) => p.type === f));
+    if (categoryFilters.length > 0) temp = temp.filter(p => categoryFilters.some(f => p.categories.includes(f)));
+    if (typeFilters.length > 0) temp = temp.filter(p => typeFilters.some(f => p.type === f));
 
     switch (sortBy) {
       case "Price: Low to High":
@@ -98,36 +71,30 @@ const ProductList = () => {
   }, [products, categoryFilters, typeFilters, sortBy]);
 
   const indexOfLast = currentPage * itemsPerPage;
-  const currentProducts = filteredAndSortedProducts.slice(
-    indexOfLast - itemsPerPage,
-    indexOfLast
-  );
+  const currentProducts = filteredAndSortedProducts.slice(indexOfLast - itemsPerPage, indexOfLast);
   const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
 
   const renderStars = (rating) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       if (rating >= i) stars.push(<FaStar key={i} className="text-yellow-400" />);
-      else if (rating >= i - 0.5)
-        stars.push(<FaStarHalfAlt key={i} className="text-yellow-400" />);
+      else if (rating >= i - 0.5) stars.push(<FaStarHalfAlt key={i} className="text-yellow-400" />);
       else stars.push(<FaRegStar key={i} className="text-yellow-400" />);
     }
     return stars;
   };
 
-  if (loading)
-    return <p className="text-center text-gray-500 py-20">Loading products...</p>;
-  if (error)
-    return <p className="text-center text-red-500 py-20">Error: {error}</p>;
+  if (loading) return <p className="text-center text-gray-500 py-20">Loading products...</p>;
+  if (error) return <p className="text-center text-red-500 py-20">Error: {error}</p>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-800 mb-6">All Products</h1>
+         <h1 className="text-xl font-bold text-gray-800 mb-6">All Products</h1>
       </div>
-
       <div className="flex justify-between items-center mb-6">
+       
         <div className="flex items-center gap-3">
           {/* Mobile Filter Button */}
           <button
@@ -142,76 +109,46 @@ const ProductList = () => {
             onChange={(e) => setSortBy(e.target.value)}
             className="border border-gray-300 px-3 py-2 rounded-lg text-sm shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer"
           >
-            {sortOptions.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
+            {sortOptions.map(option => (
+              <option key={option} value={option}>{option}</option>
             ))}
           </select>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* 🔹 Filter Sidebar + Overlay */}
+        {/* Sidebar Filters */}
         <AnimatePresence>
-          {/* Background Overlay for Mobile */}
-          {showFilters && !isDesktop && (
-            <motion.div
-              key="overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
-              onClick={() => setShowFilters(false)}
-            />
-          )}
-
-          {/* Sidebar Filter Panel */}
-          {(showFilters || isDesktop) && (
+          {(showFilters || window.innerWidth >= 768) && (
             <motion.aside
               key="filters"
-              initial={{ x: isDesktop ? 0 : -300, opacity: isDesktop ? 1 : 0 }}
+              initial={{ x: -300, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: isDesktop ? 0 : -300, opacity: isDesktop ? 1 : 0 }}
+              exit={{ x: -300, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className={`${
-                isDesktop
-                  ? "md:col-span-3 bg-white shadow-lg p-6 rounded-2xl h-fit sticky top-24"
-                  : "fixed top-0 left-0 w-72 h-full bg-white shadow-2xl p-6 z-50 overflow-y-auto"
-              }`}
+              className="fixed md:static top-0 left-0 md:col-span-3 w-72 md:w-auto h-full md:h-auto bg-white shadow-2xl md:shadow-lg p-6 rounded-none md:rounded-2xl z-50 overflow-y-auto"
             >
-              {/* Mobile Header */}
-              {!isDesktop && (
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                    <FaFilter className="text-red-500" /> Filters
-                  </h2>
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className="text-gray-500 hover:text-red-500"
-                  >
-                    <FaTimes size={20} />
-                  </button>
-                </div>
-              )}
-
-              {/* Desktop Title */}
-              {isDesktop && (
-                <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+              {/* Mobile Close Button */}
+              <div className="flex justify-between items-center mb-4 md:hidden">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                   <FaFilter className="text-red-500" /> Filters
                 </h2>
-              )}
+                <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-red-500">
+                  <FaTimes size={20} />
+                </button>
+              </div>
+
+              {/* Desktop Title */}
+              <h2 className="text-lg font-bold mb-4 text-gray-800 hidden md:flex items-center gap-2">
+                <FaFilter className="text-red-500" /> Filters
+              </h2>
 
               {/* Categories */}
               {availableCategories.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-semibold mb-2 text-gray-700">Categories</h3>
-                  {availableCategories.map((cat) => (
-                    <label
-                      key={cat}
-                      className="flex items-center mb-2 text-sm text-gray-700 cursor-pointer"
-                    >
+                  {availableCategories.map(cat => (
+                    <label key={cat} className="flex items-center mb-2 text-sm text-gray-700 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={categoryFilters.includes(cat)}
@@ -228,11 +165,8 @@ const ProductList = () => {
               {availableTypes.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-2 text-gray-700">Type</h3>
-                  {availableTypes.map((type) => (
-                    <label
-                      key={type}
-                      className="flex items-center mb-2 text-sm text-gray-700 cursor-pointer"
-                    >
+                  {availableTypes.map(type => (
+                    <label key={type} className="flex items-center mb-2 text-sm text-gray-700 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={typeFilters.includes(type)}
@@ -248,13 +182,13 @@ const ProductList = () => {
           )}
         </AnimatePresence>
 
-        {/* 🔹 Product Grid */}
+        {/* Product Grid */}
         <main className="md:col-span-9">
           {filteredAndSortedProducts.length === 0 ? (
             <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-10">
-              {currentProducts.map((product) => (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+              {currentProducts.map(product => (
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}

@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from "react";
-import {
-  ShoppingCart,
-  Search,
-  MapPin,
-  Phone,
-  LayoutDashboard,
-} from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { ShoppingCart, Search, MapPin, Phone } from "lucide-react";
+import { Link } from "react-router-dom";
 import Logo from "../assets/newlogo.jpg";
 import Auth from "./Auth.jsx";
-import API from "../../api/apiClient.js";
+import API from "../../api/apiClient";
 import { toast } from "react-toastify";
 import { useSelector, useDispatch } from "react-redux";
 import { setUser, clearUser } from "../redux/userSlice.js";
@@ -18,7 +12,6 @@ const Navbar = () => {
   const [cartCount, setCartCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const navigate = useNavigate();
 
   const user = useSelector((state) => state.user.user);
   const dispatch = useDispatch();
@@ -33,7 +26,7 @@ const Navbar = () => {
   useEffect(() => {
     const checkLogin = async () => {
       try {
-        const { data } = await API.get("/auth/me", { withCredentials: true });
+        const { data } = await API.get("/auth/me");
         dispatch(setUser(data.user));
       } catch {
         dispatch(clearUser());
@@ -44,7 +37,7 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      await API.post("/auth/logout", {}, { withCredentials: true });
+      await API.post("/auth/logout");
       dispatch(clearUser());
       toast.success("Logged out successfully!");
     } catch (err) {
@@ -53,21 +46,12 @@ const Navbar = () => {
     }
   };
 
-  // ✅ Handle Dashboard Button (both mobile & desktop)
-  const handleDashboardClick = () => {
-    if (user?.role === "admin") {
-      navigate("/admin");
-    } else {
-      setShowLoginModal(true);
-    }
-  };
-
   return (
     <>
       {/* Sticky Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg shadow-md border-b border-gray-100">
         {/* Top Info Bar */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 text-white text-[7px] md:text-sm px-4 py-2 flex justify-between items-center">
+        <div className="bg-green-400 text-white text-[7px] md:text-sm px-4 py-2 flex justify-between items-center">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-1">
               <MapPin size={14} />
@@ -78,9 +62,8 @@ const Navbar = () => {
               <span>+91 9876543210</span>
             </div>
           </div>
-          <p className="text-[8px] md:text-sm font-semibold uppercase tracking-wide flex items-center gap-2">
-            <span className="animate-bounce">🚚</span>
-            Free Shipping on Orders Over ₹500
+          <p className="text-[8px] md:text-sm font-semibold uppercase tracking-wide">
+            🚚 Free Shipping on Orders Over ₹500
           </p>
         </div>
 
@@ -127,13 +110,8 @@ const Navbar = () => {
             {/* Auth Buttons */}
             {user ? (
               <div className="flex items-center gap-4">
-                <span className="text-gray-700 text-[8px] md:text-sm bg-gradient-to-r from-red-50 to-orange-50 px-3 py-1 rounded-md font-medium border border-red-100">
+                <span className="text-gray-700 text-xs md:text-sm bg-red-50 px-3 py-1 rounded-md font-medium">
                   Hi, {user.phone}
-                  {user?.role === "admin" && (
-                    <span className="ml-2 text-[8px] text-red-500 font-bold uppercase">
-                      Admin
-                    </span>
-                  )}
                 </span>
                 <button
                   onClick={handleLogout}
@@ -145,7 +123,7 @@ const Navbar = () => {
             ) : (
               <button
                 onClick={toggleLoginModal}
-                className="bg-gradient-to-r from-red-500 to-red-600 text-white px-5 py-2 rounded-full hover:opacity-90 transition font-medium text-sm shadow-md hover:scale-105 active:scale-95"
+                className="bg-red-500 text-white px-5 py-2 rounded-full hover:bg-red-600 transition font-medium text-sm shadow-md"
               >
                 Login
               </button>
@@ -191,40 +169,37 @@ const Navbar = () => {
           </form>
         </div>
 
-        {/* Bottom Nav (Mobile) */}
-        <div className="border-t border-gray-200 bg-gradient-to-b from-white to-gray-50">
-          <div className="max-w-7xl mx-auto flex justify-center gap-3 md:gap-5 py-2 px-4 flex-wrap">
-            <Link
-              to="/"
-              className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 transition font-medium text-sm hover:scale-105 active:scale-95"
-            >
-              Home
-            </Link>
+        {/* Bottom Nav */}
+        <div className="border-t  border-gray-200 flex justify-center gap-5 py-2 px-4 flex-wrap">
+          <Link
+            to="/"
+            className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 transition font-medium text-sm"
+          >
+            Home
+          </Link>
 
-            <Link
-              to="/product"
-              className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 transition font-medium text-sm hover:scale-105 active:scale-95"
-            >
-              All Products
-            </Link>
+          <Link
+            to="/product"
+            className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-red-50 hover:text-red-600 transition font-medium text-sm"
+          >
+            All Products
+          </Link>
 
-            {/* ✅ Mobile Dashboard Button */}
-            <button
-              onClick={handleDashboardClick}
-              className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-1.5 rounded-md shadow-sm hover:opacity-90 transition font-medium text-sm hover:scale-105 active:scale-95"
+          {user?.role === "admin" && (
+            <Link
+              to="/admin/dashboard"
+              className="bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-1.5 rounded-md shadow-sm hover:opacity-90 transition font-medium text-sm"
             >
-              <LayoutDashboard
-                size={16}
-                className="group-hover:rotate-12 transition-transform"
-              />
-              <span>Dashboard</span>
-            </button>
-          </div>
+              Dashboard
+            </Link>
+          )}
         </div>
       </header>
 
       {/* Login Modal */}
-      {showLoginModal && <Auth toggleLoginModal={toggleLoginModal} />}
+      {showLoginModal && (
+        <Auth toggleLoginModal={toggleLoginModal} />
+      )}
     </>
   );
 };
