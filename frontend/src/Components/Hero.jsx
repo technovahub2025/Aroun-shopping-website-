@@ -1,5 +1,6 @@
 import React from "react";
 import heroImage from "../assets/imglog.avif";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
@@ -20,9 +21,12 @@ const Hero = () => {
           </p>
 
           <div className="flex justify-center md:justify-start gap-4 mt-6">
-            <button className="bg-green-500 text-white px-7 py-3 rounded-full font-semibold shadow-lg hover:bg-green-600 transform hover:scale-105 transition">
+            <Link to="/product">
+             <button className="bg-green-500 text-white px-7 py-3 rounded-full font-semibold shadow-lg hover:bg-green-600 transform hover:scale-105 transition">
               Shop Now
             </button>
+            </Link>
+           
             <button className="bg-white border border-red-500 text-red-500 px-7 py-3 rounded-full font-semibold shadow hover:bg-red-100 transform hover:scale-105 transition">
               Learn More
             </button>

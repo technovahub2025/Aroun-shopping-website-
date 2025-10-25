@@ -16,6 +16,7 @@ const ProductDetails = () => {
   
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items || []);
+  const user = useSelector((state) => state.user.user);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -66,6 +67,11 @@ const ProductDetails = () => {
   }, [product]);
 
   const handleAddToCart = () => {
+    if (!user) {
+      toast.error("Please login to add items to cart");
+      return;
+    }
+    
     const exists = cartItems.some((item) => item.id === product._id);
     if (exists) {
       toast.info("This product is already in your cart!");
