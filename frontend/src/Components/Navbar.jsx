@@ -122,17 +122,7 @@ const Navbar = () => {
 
           {/* Right Icons */}
           <div className="flex items-center gap-4">
-            {/* Admin Dashboard Link (Desktop + protected) */}
-            {/* <button
-              onClick={handleDashboardClick}
-              className="hidden md:flex items-center gap-2 bg-gradient-to-r from-red-500 to-orange-500 text-white px-4 py-2 rounded-full hover:opacity-90 transition font-medium text-sm shadow-md group"
-            >
-              <LayoutDashboard
-                size={18}
-                className="group-hover:rotate-12 transition-transform"
-              />
-              <span>Dashboard</span>
-            </button> */}
+          
 
             {/* Auth Buttons */}
             {user ? (
@@ -147,7 +137,7 @@ const Navbar = () => {
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="bg-red-500 text-white md:px-4 md:py-2 text-[10px] px-2 py-2 rounded-full hover:bg-red-600 transition font-medium md:text-md shadow-md hover:scale-105 active:scale-95"
+                  className="bg-red-500 text-white md:px-4 md:py-2 text-[10px] px-2 py-2 rounded-full hover:bg-red-600 transition font-medium md:text-md shadow-md"
                 >
                   Logout
                 </button>
@@ -161,7 +151,7 @@ const Navbar = () => {
               </button>
             )}
 
-            {/* Cart */}
+              {/* Cart */}
             <Link
               to="/cart"
               className="relative hover:scale-110 transition-transform"
