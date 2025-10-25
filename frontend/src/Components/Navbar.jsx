@@ -9,7 +9,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import Logo from "../assets/newlogo.jpg";
 import Auth from "./Auth.jsx";
-import API from "../../api/apiClient";
+import API from "../../api/apiClient.js";
 import { toast } from "react-toastify";
 import { useSelector, useDispatch } from "react-redux";
 import { setUser, clearUser } from "../redux/userSlice.js";
