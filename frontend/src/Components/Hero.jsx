@@ -8,7 +8,7 @@ const Hero = () => {
       <div className="absolute -top-32 -left-32 w-96 h-96 bg-green-200 rounded-full mix-blend-multiply opacity-30 animate-pulse"></div>
       <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-green-300 rounded-full mix-blend-multiply opacity-30 animate-pulse"></div>
 
-      <div className="max-w-7xl   mx-auto px-4 md:px-10 py-20 md:py-32 flex flex-col-reverse md:flex-row items-center gap-10 relative z-10">
+      <div className="max-w-7xl   mx-auto px-4 md:px-10 py-20 md:py-32 flex flex-col md:flex-row items-center gap-10 relative z-10">
         
         {/* Text Content */}
         <div className="flex-1 text-center md:text-left space-y-6">

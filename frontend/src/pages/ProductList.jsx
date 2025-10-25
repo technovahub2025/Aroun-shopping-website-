@@ -1,13 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
-import {
-  FaStar,
-  FaStarHalfAlt,
-  FaRegStar,
-  FaFilter,
-  FaTimes,
-} from "react-icons/fa";
-import { Link } from "react-router-dom";
+import { FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaTimes } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ProductList = () => {
@@ -22,6 +16,7 @@ const ProductList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+  const [searchParams] = useSearchParams();
 
   const itemsPerPage = 6;
   const sortOptions = [
@@ -30,6 +25,8 @@ const ProductList = () => {
     "Price: High to Low",
     "Newest",
   ];
+
+  const selectedCategory = searchParams.get("category");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +39,11 @@ const ProductList = () => {
         setAvailableTypes(
           Array.from(new Set(res.data.flatMap((p) => (p.type ? [p.type] : []))))
         );
+
+        // 🟢 Auto-filter by category from URL if exists
+        if (selectedCategory) {
+          setCategoryFilters([selectedCategory]);
+        }
       } catch (err) {
         setError(err.response?.data?.message || err.message);
       } finally {
@@ -49,9 +51,9 @@ const ProductList = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [selectedCategory]);
 
-  // 🧩 Handle responsive resizing
+  // Handle responsive resizing
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
     window.addEventListener("resize", handleResize);
@@ -122,14 +124,15 @@ const ProductList = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-800 mb-6">All Products</h1>
+        <h1 className="text-xl font-bold text-gray-800 mb-6">
+          {selectedCategory ? `${selectedCategory} Products` : "All Products"}
+        </h1>
       </div>
 
+      {/* Filter + Sort */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
-          {/* Mobile Filter Button */}
           <button
             className="sm:hidden flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg shadow hover:bg-red-600 transition"
             onClick={() => setShowFilters(true)}
@@ -152,9 +155,8 @@ const ProductList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* 🔹 Filter Sidebar + Overlay */}
+        {/* Filter Sidebar + Overlay */}
         <AnimatePresence>
-          {/* Background Overlay for Mobile */}
           {showFilters && !isDesktop && (
             <motion.div
               key="overlay"
@@ -167,7 +169,6 @@ const ProductList = () => {
             />
           )}
 
-          {/* Sidebar Filter Panel */}
           {(showFilters || isDesktop) && (
             <motion.aside
               key="filters"
@@ -181,7 +182,6 @@ const ProductList = () => {
                   : "fixed top-0 left-0 w-72 h-full bg-white shadow-2xl p-6 z-50 overflow-y-auto"
               }`}
             >
-              {/* Mobile Header */}
               {!isDesktop && (
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
@@ -196,7 +196,6 @@ const ProductList = () => {
                 </div>
               )}
 
-              {/* Desktop Title */}
               {isDesktop && (
                 <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
                   <FaFilter className="text-red-500" /> Filters
@@ -248,12 +247,12 @@ const ProductList = () => {
           )}
         </AnimatePresence>
 
-        {/* 🔹 Product Grid */}
+        {/* Product Grid */}
         <main className="md:col-span-9">
           {filteredAndSortedProducts.length === 0 ? (
             <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4  md:gap-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-10">
               {currentProducts.map((product) => (
                 <Link
                   key={product._id}

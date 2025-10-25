@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
@@ -17,6 +17,7 @@ const gradientPalette = [
 
 const CategoriesCarousel = () => {
   const [categories, setCategories] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -24,6 +25,7 @@ const CategoriesCarousel = () => {
         const res = await productApi.getAll();
         const products = res.data;
 
+        // Group products by categories
         const categoryMap = {};
         products.forEach((p) => {
           if (Array.isArray(p.categories)) {
@@ -50,6 +52,10 @@ const CategoriesCarousel = () => {
     fetchProducts();
   }, []);
 
+  const handleViewMore = (catName) => {
+    navigate(`/product?category=${encodeURIComponent(catName)}`);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-3 md:px-4 py-10 md:py-16">
       <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">
@@ -73,40 +79,40 @@ const CategoriesCarousel = () => {
       >
         {categories.map((cat, index) => (
           <SwiperSlide key={index}>
-            <Link
-              to={`/products?category=${cat.name}`}
-              className={`block bg-gradient-to-br ${
+            <div
+              className={`flex flex-col items-center justify-between h-72 w-full bg-gradient-to-br ${
                 gradientPalette[index % gradientPalette.length]
-              } rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden text-center`}
+              } rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden text-center cursor-pointer`}
             >
-              <div className="flex flex-col items-center justify-between p-5 h-64">
-                {/* Category Image */}
-                <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden bg-white shadow-inner flex items-center justify-center border border-gray-100">
-                  <img
-                    src={cat.image}
-                    alt={cat.name}
-                    className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
-                  />
-                </div>
-
-                {/* Category Info */}
-                <div className="flex flex-col items-center flex-1 mt-4">
-                  <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-1">
-                    {cat.name}
-                  </h3>
-                  <ul className="text-gray-600 text-xs md:text-sm mt-1 space-y-0.5 line-clamp-2">
-                    {cat.items.slice(0, 3).map((item, idx) => (
-                      <li key={idx}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* View More */}
-                <span className="text-green-700 font-semibold text-xs md:text-sm mt-3 hover:underline">
-                  View More →
-                </span>
+              {/* Category Image */}
+              <div className="mt-6 w-28 h-28 rounded-full overflow-hidden bg-white shadow-inner flex items-center justify-center border border-gray-100">
+                <img
+                  src={cat.image}
+                  alt={cat.name}
+                  className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+                />
               </div>
-            </Link>
+
+              {/* Category Info */}
+              <div className="flex flex-col items-center flex-1 mt-4 px-3">
+                <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-1">
+                  {cat.name}
+                </h3>
+                <ul className="text-gray-600 text-xs md:text-sm mt-1 space-y-0.5 line-clamp-2">
+                  {cat.items.slice(0, 3).map((item, idx) => (
+                    <li key={idx}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* View More */}
+              <button
+                onClick={() => handleViewMore(cat.name)}
+                className="mb-4 text-green-700 font-semibold text-xs md:text-sm hover:underline"
+              >
+                View More →
+              </button>
+            </div>
           </SwiperSlide>
         ))}
       </Swiper>
