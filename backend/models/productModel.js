@@ -6,7 +6,7 @@ const productSchema = new mongoose.Schema(
     description: String,
     price: { type: Number, required: true },
     rating: { type: Number, default: 0 },
-    categories: [String],
+    categories: [{ type: String, required: true }],  // Array of strings like ["Rice"]
     images: [String], // Cloudinary URLs
     stock: { type: Number, default: 0 }, // Available quantity
   

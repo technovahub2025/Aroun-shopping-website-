@@ -18,7 +18,7 @@ const ProductList = () => {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [searchParams] = useSearchParams();
 
-  const itemsPerPage = 6;
+  const itemsPerPage = 10;
   const sortOptions = [
     "Relevant",
     "Price: Low to High",

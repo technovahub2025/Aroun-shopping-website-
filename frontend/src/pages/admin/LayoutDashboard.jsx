@@ -17,7 +17,10 @@ const LayoutDashboard = () => {
         } transition-transform duration-200 ease-in-out bg-white w-64 shadow-lg md:translate-x-0 md:static md:shadow-none`}
       >
         <div className="flex items-center justify-between px-4 py-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">Admin Panel</h2>
+            <Link to="/">
+              <h2 className="text-xl font-semibold text-gray-800">  ←  Back to website</h2>
+            </Link>
+        
           <button
             onClick={toggleSidebar}
             className="md:hidden p-2 rounded hover:bg-gray-100"
@@ -27,23 +30,23 @@ const LayoutDashboard = () => {
         </div>
 
         <nav className="mt-4 flex flex-col space-y-1 px-4">
-          <Link
+          {/* <Link
             to="/admin"
             className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200"
           >
             <Home className="w-5 h-5" />
             <span>Dashboard</span>
-          </Link>
+          </Link> */}
 
           <Link
-            to="/admin/products"
+            to="/admin"
             className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200"
           >
             <ShoppingCart className="w-5 h-5" />
             <span>Products</span>
           </Link>
 
-          <Link
+          {/* <Link
             to="/admin/users"
             className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200"
           >
@@ -57,7 +60,7 @@ const LayoutDashboard = () => {
           >
             <Settings className="w-5 h-5" />
             <span>Settings</span>
-          </Link>
+          </Link> */}
         </nav>
       </div>
 

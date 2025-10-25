@@ -71,7 +71,9 @@ const Cartpages = () => {
                 <span>₹{total.toLocaleString()}</span>
               </div>
               <div className="mt-6">
-                <button className="w-full bg-black text-white px-4 py-2 rounded">Proceed to Checkout</button>
+                <Link to="/checkout" className="block w-full">
+                  <button className="w-full bg-black text-white px-4 py-2 rounded">Proceed to Checkout</button>
+                </Link>
               </div>
               <div className="mt-3 text-center">
                 <button onClick={() => dispatch(clearCart())} className="text-sm text-red-500">Clear cart</button>
