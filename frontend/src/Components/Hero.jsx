@@ -12,8 +12,8 @@ const Hero = () => {
       <div className="max-w-7xl   mx-auto px-4 md:px-10 py-20 md:py-32 flex flex-col md:flex-row items-center gap-10 relative z-10">
         
         {/* Text Content */}
-        <div className="flex-1 text-center md:text-left space-y-6">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-[#ee1116] leading-tight">
+        <div className="flex-1 mt-[-60px] md:mt-0 text-center md:text-left space-y-6">
+          <h1 className="text-3xl md:text-6xl font-extrabold text-[#ee1116] leading-tight">
             Discover <span className="text-green-600">Amazing Products</span>
           </h1>
           <p className="text-gray-700 text-lg md:text-xl max-w-md mx-auto md:mx-0">

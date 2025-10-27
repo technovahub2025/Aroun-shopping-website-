@@ -77,7 +77,7 @@ const CategoriesCarousel = () => {
         {categories.map((cat, index) => (
           <SwiperSlide key={index}>
             <div
-              className={`flex flex-col items-center justify-between  min-h-[270px] md:min-h-[290px] bg-gradient-to-br ${
+              className={`flex flex-col items-center justify-between mb-10  min-h-[270px] md:min-h-[290px] bg-gradient-to-br ${
                 gradientPalette[index % gradientPalette.length]
               } rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden text-center cursor-pointer`}
             >
@@ -92,9 +92,9 @@ const CategoriesCarousel = () => {
 
               {/* Category Info */}
               <div className="flex flex-col items-center flex-1 mt-4 px-3">
-                <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-1">
+                {/* <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-1">
                   {cat.name}
-                </h3>
+                </h3> */}
                 <ul className="text-gray-600 text-xs md:text-sm mt-1 space-y-0.5 line-clamp-2">
                   {cat.items.slice(0, 3).map((item, idx) => (
                     <li key={idx}>{item}</li>

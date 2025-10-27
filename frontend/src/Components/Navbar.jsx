@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { ShoppingCart, Search, MapPin, Phone, Menu, X } from "lucide-react";
+import {
+  ShoppingCart,
+  Search,
+  MapPin,
+  Phone,
+  Menu,
+  X,
+  Home,
+  Package,
+  ClipboardList,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import Logo from "../assets/newlogo.jpg";
 import Auth from "./Auth.jsx";
@@ -110,17 +123,17 @@ const Navbar = () => {
                 </span>
                 <button
                   onClick={handleLogout}
-                  className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm shadow-sm"
+                  className="bg-green-600 text-white px-4 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm shadow-sm flex items-center gap-1"
                 >
-                  Logout
+                  <LogOut size={16} /> Logout
                 </button>
               </div>
             ) : (
               <button
                 onClick={toggleLoginModal}
-                className="hidden md:block bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm shadow-sm"
+                className="hidden md:flex items-center gap-1 bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm shadow-sm"
               >
-                Login
+                <LogIn size={16} /> Login
               </button>
             )}
 
@@ -150,7 +163,7 @@ const Navbar = () => {
         {/* Mobile Dropdown Menu */}
         <div
           className={`md:hidden bg-white border-t border-gray-200 transition-all duration-300 overflow-hidden ${
-            menuOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
+            menuOpen ? "max-h-[450px] opacity-100" : "max-h-0 opacity-0"
           }`}
         >
           <div className="px-4 py-3 flex flex-col gap-3">
@@ -172,26 +185,35 @@ const Navbar = () => {
 
             <Link
               to="/"
-              className="px-4 py-2 rounded-md hover:bg-green-50 text-gray-700 font-medium text-sm"
+              className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-green-50 text-gray-700 font-medium text-sm"
               onClick={toggleMenu}
             >
-              Home
+              <Home size={16} className="text-green-600" /> Home
             </Link>
+
             <Link
               to="/product"
-              className="px-4 py-2 rounded-md hover:bg-green-50 text-gray-700 font-medium text-sm"
+              className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-green-50 text-gray-700 font-medium text-sm"
               onClick={toggleMenu}
             >
-              All Products
+              <Package size={16} className="text-green-600" /> All Products
+            </Link>
+
+            <Link
+              to="/orders"
+              className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-green-50 text-gray-700 font-medium text-sm"
+              onClick={toggleMenu}
+            >
+              <ClipboardList size={16} className="text-green-600" /> My Orders
             </Link>
 
             {user?.role === "admin" && (
               <Link
                 to="/admin"
-                className="px-4 py-2 rounded-md bg-gradient-to-r from-green-600 to-lime-500 text-white font-medium text-sm"
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-gradient-to-r from-green-600 to-lime-500 text-white font-medium text-sm"
                 onClick={toggleMenu}
               >
-                Dashboard
+                <LayoutDashboard size={16} /> Dashboard
               </Link>
             )}
 
@@ -201,41 +223,50 @@ const Navbar = () => {
                   handleLogout();
                   toggleMenu();
                 }}
-                className="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm mt-2"
+                className="flex items-center justify-center gap-2 bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm mt-2"
               >
-                Logout
+                <LogOut size={16} /> Logout
               </button>
             ) : (
               <button
                 onClick={toggleLoginModal}
-                className="bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm mt-2"
+                className="flex items-center justify-center gap-2 bg-green-600 text-white px-5 py-2 rounded-full hover:bg-green-700 transition font-medium text-sm mt-2"
               >
-                Login
+                <LogIn size={16} /> Login
               </button>
             )}
           </div>
         </div>
 
-        {/* Bottom Links (Desktop only) */}
-        <div className="hidden md:flex justify-center gap-5 py-2 border-t border-gray-100">
+        {/* Bottom Links (Desktop) */}
+        <div className="hidden md:flex justify-center gap-6 py-2 border-t border-gray-100 bg-white">
           <Link
             to="/"
-            className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-green-50 hover:text-green-700 transition font-medium text-sm"
+            className="flex items-center gap-1 bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-green-50 hover:text-green-700 transition font-medium text-sm"
           >
-            Home
+            <Home size={16} /> Home
           </Link>
+
           <Link
             to="/product"
-            className="bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-green-50 hover:text-green-700 transition font-medium text-sm"
+            className="flex items-center gap-1 bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-green-50 hover:text-green-700 transition font-medium text-sm"
           >
-            All Products
+            <Package size={16} /> All Products
           </Link>
+
+          <Link
+            to="/orders"
+            className="flex items-center gap-1 bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-green-50 hover:text-green-700 transition font-medium text-sm"
+          >
+            <ClipboardList size={16} /> My Orders
+          </Link>
+
           {user?.role === "admin" && (
             <Link
               to="/admin"
-              className="bg-gradient-to-r from-green-600 to-lime-500 text-white px-4 py-1.5 rounded-md shadow-sm hover:opacity-90 transition font-medium text-sm"
+              className="flex items-center gap-1 bg-gradient-to-r from-green-600 to-lime-500 text-white px-4 py-1.5 rounded-md shadow-sm hover:opacity-90 transition font-medium text-sm"
             >
-              Dashboard
+              <LayoutDashboard size={16} /> Dashboard
             </Link>
           )}
         </div>

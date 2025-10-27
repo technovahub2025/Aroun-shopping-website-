@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import orderApi from '../../api/orderApi';
+import paymentApi from '../../api/paymentApi';
+import { useDispatch } from 'react-redux';
+import { clearCart } from '../redux/cartSlice';
+import { useNavigate } from 'react-router-dom';
 
 const Checkout = () => {
   const cartItems = useSelector((state) => state.cart?.items || []);
   const user = useSelector((state) => state.user?.user);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -43,11 +50,43 @@ const Checkout = () => {
     }
 
     try {
-      // Here you'll integrate your order creation API
+      // Build items payload
+      const items = cartItems.map((item) => ({
+        product: item.id,
+        name: item.title,
+        price: item.price,
+        image: item.image,
+        quantity: item.quantity,
+      }));
+
+      const shipping = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        street: formData.street,
+        city: formData.city,
+        zipcode: formData.zipCode,
+        phone: formData.phoneNumber,
+      };
+
+      // If payment method is not COD, process dummy payment first
+      let paymentResult = null;
+      if (paymentMethod !== 'cod') {
+        const payResp = await paymentApi.process({ amount: total, currency: 'INR', paymentMethod, simulate: 'success' });
+        paymentResult = payResp.data?.transaction || null;
+      }
+
+      // Create order with items and shipping; include paymentResult to mark paid
+      const orderResp = await orderApi.create({ items, shipping, paymentMethod, paymentResult });
+
+      // Clear local cart and notify
+      dispatch(clearCart());
       toast.success('Order placed successfully!');
+      // navigate to orders page
+      navigate('/orders');
     } catch (error) {
-      toast.error('Failed to place order');
       console.error('Order error:', error);
+      toast.error(error.response?.data?.message || 'Failed to place order');
     }
   };
 
