@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 // Components
 import Navbar from "./Components/Navbar";
 import BottomNav from "./components/BottomNav";
+import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Pages
@@ -85,7 +86,12 @@ const AppContent = () => {
           }
         />
       </Routes>
-      {!hideNavbar && <BottomNav />}
+      {!hideNavbar && (
+        <>
+          <BottomNav />
+          <Footer />
+        </>
+      )}
     </>
   );
 };

@@ -24,3 +24,14 @@
 .animate-fade-in {
   animation: fade-in 1s ease-out forwards;
 }
+
+
+
+/* Add this to your global CSS (e.g., index.css) to hide scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -5,14 +5,15 @@ import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/autoplay";
 import productApi from "../../api/productApi";
+import Title from "./Title";
 
 const gradientPalette = [
+  "from-red-100 via-rose-50 to-white",
+  "from-orange-100 via-yellow-50 to-white",
   "from-pink-100 via-pink-50 to-white",
   "from-yellow-100 via-orange-50 to-white",
-  "from-green-100 via-emerald-50 to-white",
-  "from-blue-100 via-sky-50 to-white",
   "from-purple-100 via-violet-50 to-white",
-  "from-red-100 via-rose-50 to-white",
+  "from-red-50 via-orange-50 to-white",
 ];
 
 const CategoriesCarousel = () => {
@@ -25,7 +26,6 @@ const CategoriesCarousel = () => {
         const res = await productApi.getAll();
         const products = res.data;
 
-        // Group products by categories
         const categoryMap = {};
         products.forEach((p) => {
           if (Array.isArray(p.categories)) {
@@ -42,8 +42,7 @@ const CategoriesCarousel = () => {
           }
         });
 
-        const categoryList = Object.values(categoryMap);
-        setCategories(categoryList);
+        setCategories(Object.values(categoryMap));
       } catch (error) {
         console.error("Failed to load categories:", error);
       }
@@ -57,10 +56,8 @@ const CategoriesCarousel = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 md:px-4 py-10 md:py-16">
-      <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-8 text-center">
-        Categories
-      </h2>
+    <div className="max-w-7xl mx-auto px-4 py-10 md:py-16">
+      <Title text="Shop by Categories" />
 
       <Swiper
         spaceBetween={20}
@@ -80,12 +77,12 @@ const CategoriesCarousel = () => {
         {categories.map((cat, index) => (
           <SwiperSlide key={index}>
             <div
-              className={`flex flex-col items-center justify-between h-72 w-full bg-gradient-to-br ${
+              className={`flex flex-col items-center justify-between  min-h-[270px] md:min-h-[290px] bg-gradient-to-br ${
                 gradientPalette[index % gradientPalette.length]
               } rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden text-center cursor-pointer`}
             >
               {/* Category Image */}
-              <div className="mt-6 w-28 h-28 rounded-full overflow-hidden bg-white shadow-inner flex items-center justify-center border border-gray-100">
+              <div className="mt-6 w-28 h-28 rounded-full overflow-hidden bg-white shadow-inner flex items-center justify-center border border-gray-100 p-4">
                 <img
                   src={cat.image}
                   alt={cat.name}
@@ -108,7 +105,7 @@ const CategoriesCarousel = () => {
               {/* View More */}
               <button
                 onClick={() => handleViewMore(cat.name)}
-                className="mb-4 text-green-700 font-semibold text-xs md:text-sm hover:underline"
+                className="mb-4 text-red-600 font-semibold text-xs md:text-sm hover:underline"
               >
                 View More →
               </button>
