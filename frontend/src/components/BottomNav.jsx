@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Home, Package, ShoppingCart, ClipboardList, User, LogIn } from "lucide-react";
 import { useSelector } from "react-redux";
-import Auth from "../../src/components/Auth.jsx"
+
 
 const BottomNav = () => {
   const location = useLocation();
@@ -32,11 +32,7 @@ const BottomNav = () => {
     { path: "/product", icon: <Package size={24} />, label: "Products" },
     { path: "/cart", icon: <ShoppingCart size={24} />, label: "Cart" },
     { path: "/orders", icon: <ClipboardList size={24} />, label: "Orders" },
-    {
-      path: "/profile",
-      icon: user ? <User size={24} /> : <LogIn size={24} />,
-      label: user ? "Profile" : "Login",
-    },
+    
   ];
 
   const isActive = (path) => {
@@ -72,8 +68,7 @@ const BottomNav = () => {
         </div>
       </nav>
 
-      {/* ✅ Login Modal */}
-      {showLoginModal && <Auth toggleLoginModal={toggleLoginModal} />}
+   
     </>
   );
 };
