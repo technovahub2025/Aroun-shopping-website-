@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Home, Package, ShoppingCart, ClipboardList, User, LogIn } from "lucide-react";
 import { useSelector } from "react-redux";
-import Auth from "./Auth"; // ✅ Import login modal component
+import Auth from "../../src/components/Auth.jsx"
 
 const BottomNav = () => {
   const location = useLocation();
