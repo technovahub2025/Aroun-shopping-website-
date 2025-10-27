@@ -54,6 +54,7 @@ const Navbar = () => {
     try {
       await API.post("/auth/logout");
       dispatch(clearUser());
+      try { localStorage.removeItem('token'); } catch (e) { }
       toast.success("Logged out successfully!");
     } catch (err) {
       console.error("Logout failed:", err);

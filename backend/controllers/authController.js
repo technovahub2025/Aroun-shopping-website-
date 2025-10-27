@@ -40,12 +40,19 @@ exports.verifyOtp = async (req, res) => {
 
     // Generate JWT & set cookie
     const token = generateToken(user);
-    res.cookie('token', token, {
+    // Use sameSite='none' in production so cross-site cookies work when frontend and backend are on different domains
+    const cookieOptions = {
       httpOnly: true,
-      sameSite: 'strict',
       secure: process.env.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    };
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.sameSite = 'none';
+    } else {
+      cookieOptions.sameSite = 'lax';
+    }
+
+    res.cookie('token', token, cookieOptions);
 
     res.json({
       message: 'Logged in successfully',
@@ -61,7 +68,13 @@ exports.verifyOtp = async (req, res) => {
 // 3️⃣ Logout
 exports.logout = async (req, res) => {
   try {
-    res.clearCookie('token');
+    // Clear cookie using same options so browser removes it correctly in production
+    const clearOptions = { httpOnly: true };
+    if (process.env.NODE_ENV === 'production') {
+      clearOptions.sameSite = 'none';
+      clearOptions.secure = true;
+    }
+    res.clearCookie('token', clearOptions);
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
     console.error('Logout Error:', err.message || err);

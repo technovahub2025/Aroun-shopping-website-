@@ -49,6 +49,10 @@ const Auth = ({ toggleLoginModal }) => {
       setLoading(true);
       const data = await verifyOtp(phone, otpCode);
       dispatch(setUser(data.user));
+      // store token in localStorage as a fallback for Authorization header
+      if (data.token) {
+        try { localStorage.setItem('token', data.token); } catch (e) { /* ignore */ }
+      }
       toast.success("Login successful!");
       toggleLoginModal();
     } catch (err) {
