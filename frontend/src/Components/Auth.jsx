@@ -9,7 +9,7 @@ import { setUser } from "../redux/userSlice";
 const Auth = ({ toggleLoginModal }) => {
   const [step, setStep] = useState("phone");
   const [phone, setPhone] = useState("+91");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]); // ⬅️ 6 boxes
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [timer, setTimer] = useState(0);
@@ -26,11 +26,14 @@ const Auth = ({ toggleLoginModal }) => {
   }, [timer]);
 
   const handleSendOtp = async (isResend = false) => {
-    if (!phone || phone.length <= 3) return setMessage("Enter a valid phone number");
+    if (!phone || phone.length <= 3)
+      return setMessage("Enter a valid phone number");
     try {
       setLoading(true);
       const data = await sendOtp(phone);
-      setMessage(data.message || (isResend ? "OTP resent!" : "OTP sent successfully!"));
+      setMessage(
+        data.message || (isResend ? "OTP resent!" : "OTP sent successfully!")
+      );
       toast.success(isResend ? "OTP resent!" : "OTP sent successfully!");
       setStep("otp");
       setTimer(30);
@@ -44,14 +47,17 @@ const Auth = ({ toggleLoginModal }) => {
 
   const handleVerifyOtp = async () => {
     const otpCode = otp.join("");
-    if (otpCode.length < 4) return setMessage("Enter full OTP");
+    if (otpCode.length < 6) return setMessage("Enter full OTP"); // ⬅️ 6 digits required
     try {
       setLoading(true);
       const data = await verifyOtp(phone, otpCode);
       dispatch(setUser(data.user));
-      // store token in localStorage as a fallback for Authorization header
       if (data.token) {
-        try { localStorage.setItem('token', data.token); } catch (e) { /* ignore */ }
+        try {
+          localStorage.setItem("token", data.token);
+        } catch (e) {
+          /* ignore */
+        }
       }
       toast.success("Login successful!");
       toggleLoginModal();
@@ -68,8 +74,12 @@ const Auth = ({ toggleLoginModal }) => {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    if (value && index < 3) otpRefs.current[index + 1].focus();
-    if (index === 3 && value) handleVerifyOtp();
+
+    // Move focus to next box automatically
+    if (value && index < 5) otpRefs.current[index + 1].focus();
+
+    // Auto-verify if last box filled
+    if (index === 5 && value) handleVerifyOtp();
   };
 
   const handleOtpKeyDown = (e, index) => {
@@ -95,7 +105,9 @@ const Auth = ({ toggleLoginModal }) => {
           </button>
         </div>
 
-        {message && <p className="text-sm text-center text-red-500 mb-4">{message}</p>}
+        {message && (
+          <p className="text-sm text-center text-red-500 mb-4">{message}</p>
+        )}
 
         {/* Step 1: Phone */}
         {step === "phone" && (
@@ -129,7 +141,7 @@ const Auth = ({ toggleLoginModal }) => {
         {step === "otp" && (
           <div className="flex flex-col gap-6">
             <label className="text-sm font-semibold text-gray-700 text-center">
-              Enter the 4-digit OTP sent to your number
+              Enter the 6-digit OTP sent to your number
             </label>
 
             <div className="flex justify-center gap-3">
@@ -149,7 +161,7 @@ const Auth = ({ toggleLoginModal }) => {
 
             <button
               onClick={handleVerifyOtp}
-              disabled={loading || otp.join("").length < 4}
+              disabled={loading || otp.join("").length < 6}
               className="bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition disabled:opacity-50"
             >
               {loading ? "Verifying..." : "Verify OTP"}
@@ -157,7 +169,9 @@ const Auth = ({ toggleLoginModal }) => {
 
             <div className="text-center mt-2 text-sm text-gray-600">
               {timer > 0 ? (
-                <span>Resend OTP in <b>{timer}s</b></span>
+                <span>
+                  Resend OTP in <b>{timer}s</b>
+                </span>
               ) : (
                 <button
                   onClick={() => handleSendOtp(true)}
@@ -171,7 +185,7 @@ const Auth = ({ toggleLoginModal }) => {
             <button
               onClick={() => {
                 setStep("phone");
-                setOtp(["", "", "", ""]);
+                setOtp(["", "", "", "", "", ""]);
                 setMessage("");
               }}
               className="text-red-500 text-sm mt-3 underline text-center"

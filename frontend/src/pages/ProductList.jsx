@@ -118,7 +118,7 @@ const ProductList = () => {
   };
 
   if (loading)
-    return <p className="text-center text-gray-500 py-20">Loading products...</p>;
+    return <div className="text-center text-gray-500 py-20 ">Loading products...</div>;
   if (error)
     return <p className="text-center text-red-500 py-20">Error: {error}</p>;
 
