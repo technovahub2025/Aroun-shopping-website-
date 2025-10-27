@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 
 // Components
 import Navbar from "./Components/Navbar";
+import BottomNav from "./components/BottomNav";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Pages
@@ -10,6 +11,8 @@ import Home from "./pages/Home";
 import ProductList from "./pages/ProductList";
 import Cartpages from "./pages/Cartpages";
 import ProductDetails from "./pages/ProductDetails";
+import Orders from "./pages/Orders";
+import Profile from "./pages/Profile";
 import LayoutDashboard from "./pages/admin/LayoutDashboard";
 
 // Lazy-loaded pages
@@ -52,6 +55,26 @@ const AppContent = () => {
           }
         />
 
+        {/* Orders Route */}
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute>
+              <Orders />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Profile Route */}
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Admin Dashboard (with Sidebar Layout) */}
         <Route
           path="/admin/*"
@@ -62,6 +85,7 @@ const AppContent = () => {
           }
         />
       </Routes>
+      {!hideNavbar && <BottomNav />}
     </>
   );
 };
@@ -94,7 +118,7 @@ const App = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-[72px] md:pb-0">
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>
