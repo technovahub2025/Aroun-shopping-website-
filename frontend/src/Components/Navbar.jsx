@@ -13,7 +13,7 @@ import {
   LogIn,
   LogOut,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Logo from "../assets/newlogo.jpg";
 import Auth from "./Auth.jsx";
 import API from "../../api/apiClient";
@@ -29,6 +29,7 @@ const Navbar = () => {
   const user = useSelector((state) => state.user.user);
   const cartItems = useSelector((state) => state.cart?.items || []);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const toggleLoginModal = () => setShowLoginModal(!showLoginModal);
   const toggleMenu = () => setMenuOpen(!menuOpen);
@@ -54,7 +55,7 @@ const Navbar = () => {
     try {
       await API.post("/auth/logout");
       dispatch(clearUser());
-      try { localStorage.removeItem('token'); } catch (e) { }
+      localStorage.removeItem("token");
       toast.success("Logged out successfully!");
     } catch (err) {
       console.error("Logout failed:", err);
@@ -67,17 +68,17 @@ const Navbar = () => {
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm">
         {/* Top Info Bar */}
         <div className="bg-green-500 text-white text-[10px] md:text-sm px-4 py-2 flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-0 text-center md:text-left">
-          <div className="flex justify-center md:justify-start items-center gap-4">
+          <div className="flex justify-center font-bold md:justify-start items-center gap-4">
             <div className="flex items-center gap-1">
               <MapPin size={14} />
               <span>Lawspet, Puducherry</span>
             </div>
-            <div className="flex items-center gap-1 hover:text-yellow-200 transition">
+            <div className="flex items-center font-bold gap-1 hover:text-yellow-200 transition">
               <Phone size={14} />
               <span>+91 9876543210</span>
             </div>
           </div>
-          <p className="uppercase font-semibold text-[10px] md:text-sm tracking-wide">
+          <p className="uppercase font-bold text-[10px] md:text-sm tracking-wide">
             🚚 Free Shipping on Orders Over ₹500
           </p>
         </div>
@@ -92,7 +93,7 @@ const Navbar = () => {
             <img
               src={Logo}
               alt="Logo"
-              className="w-[110px] md:w-[180px] object-contain"
+              className="w-[170px] md:w-[180px] object-contain"
             />
           </Link>
 
@@ -110,7 +111,10 @@ const Navbar = () => {
                 className="flex-1 outline-none px-2 text-gray-700 bg-transparent text-sm"
               />
               <button type="submit">
-                <Search className="text-gray-500 hover:text-green-600 transition" size={20} />
+                <Search
+                  className="text-gray-500 hover:text-green-600 transition"
+                  size={20}
+                />
               </button>
             </form>
           </div>
@@ -139,17 +143,24 @@ const Navbar = () => {
             )}
 
             {/* Cart */}
-            <Link
-              to="/cart"
+            <button
+              onClick={() => {
+                if (user) navigate("/cart");
+                else setShowLoginModal(true);
+              }}
               className="relative hover:scale-110 transition-transform"
+              aria-label="Open cart"
             >
-              <ShoppingCart className="text-gray-700 hover:text-green-600" size={26} />
+              <ShoppingCart
+                className="text-gray-700 hover:text-green-600"
+                size={26}
+              />
               {cartItems.length > 0 && (
                 <span className="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full px-1.5">
                   {cartItems.reduce((s, it) => s + (it.quantity || 0), 0)}
                 </span>
               )}
-            </Link>
+            </button>
 
             {/* Mobile Menu Button */}
             <button
@@ -164,7 +175,7 @@ const Navbar = () => {
         {/* Mobile Dropdown Menu */}
         <div
           className={`md:hidden bg-white border-t border-gray-200 transition-all duration-300 overflow-hidden ${
-            menuOpen ? "max-h-[450px] opacity-100" : "max-h-0 opacity-0"
+            menuOpen ? "max-h-[400px] opacity-100" : "max-h-0 opacity-0"
           }`}
         >
           <div className="px-4 py-3 flex flex-col gap-3">
@@ -180,7 +191,10 @@ const Navbar = () => {
                 className="flex-1 outline-none px-2 text-gray-700 bg-transparent text-sm"
               />
               <button type="submit">
-                <Search className="text-gray-500 hover:text-green-600 transition" size={20} />
+                <Search
+                  className="text-gray-500 hover:text-green-600 transition"
+                  size={20}
+                />
               </button>
             </form>
 
@@ -200,13 +214,20 @@ const Navbar = () => {
               <Package size={16} className="text-green-600" /> All Products
             </Link>
 
-            <Link
-              to="/orders"
+            {/* ✅ My Orders logic */}
+            <button
+              onClick={() => {
+                if (user) {
+                  navigate("/orders");
+                  toggleMenu();
+                } else {
+                  setShowLoginModal(true);
+                }
+              }}
               className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-green-50 text-gray-700 font-medium text-sm"
-              onClick={toggleMenu}
             >
               <ClipboardList size={16} className="text-green-600" /> My Orders
-            </Link>
+            </button>
 
             {user?.role === "admin" && (
               <Link
@@ -255,12 +276,16 @@ const Navbar = () => {
             <Package size={16} /> All Products
           </Link>
 
-          <Link
-            to="/orders"
+          {/* ✅ Desktop My Orders logic */}
+          <button
+            onClick={() => {
+              if (user) navigate("/orders");
+              else setShowLoginModal(true);
+            }}
             className="flex items-center gap-1 bg-white text-gray-700 px-4 py-1.5 rounded-md shadow-sm hover:bg-green-50 hover:text-green-700 transition font-medium text-sm"
           >
             <ClipboardList size={16} /> My Orders
-          </Link>
+          </button>
 
           {user?.role === "admin" && (
             <Link
