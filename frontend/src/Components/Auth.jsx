@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { X, RotateCcw } from "lucide-react";
-import Logo from "../assets/newlogo.jpg";
+import Logo from "../assets/newlogo.png";
 import { sendOtp, verifyOtp } from "../../api/authApi";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";

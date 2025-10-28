@@ -106,7 +106,7 @@ const Producttohome = () => {
         {visibleProducts.map((product) => (
           <div
             key={product._id}
-            className="bg-white rounded-2xl mt-4 md:p-[90px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-3 flex flex-col"
+            className="bg-white rounded-2xl mt-4 md:p-[40px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-3 flex flex-col"
           >
             <Link to={`/products/${product._id}`}>
               <img

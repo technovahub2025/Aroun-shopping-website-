@@ -14,7 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import Logo from "../assets/newlogo.jpg";
+import Logo from "../assets/newlogo.png";
 import Auth from "./Auth.jsx";
 import API from "../../api/apiClient";
 import { toast } from "react-toastify";
@@ -67,20 +67,20 @@ const Navbar = () => {
     <>
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100 shadow-sm">
         {/* Top Info Bar */}
-        <div className="bg-green-500 text-white text-[10px] md:text-sm px-4 py-2 flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-0 text-center md:text-left">
+        <div className="bg-green-500 text-white text-[16px] md:text-sm px-4 py-2 flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-0 text-center md:text-left">
          
-          <p className="uppercase font-bold text-[10px] md:text-sm tracking-wide">
+          <p className="uppercase font-bold text-[16px] md:text-xl tracking-wide">
             🚚 Free Shipping on Orders Over ₹500
           </p>
 
            <div className="flex justify-center font-bold md:justify-start items-center gap-4">
             <div className="flex items-center gap-1">
-              <MapPin size={14} />
-              <span>Lawspet, Puducherry</span>
+              <MapPin size={20} />
+              <span  className="uppercase font-bold text-[12px] md:text-xl tracking-wide">Lawspet, Puducherry</span>
             </div>
             <div className="flex items-center font-bold gap-1 hover:text-yellow-200 transition">
-              <Phone size={14} />
-              <span>+91 9876543210</span>
+              <Phone size={20} />
+              <span  className="uppercase font-bold text-[12px] md:text-xl tracking-wide">+91 9876543210</span>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ const Navbar = () => {
             <img
               src={Logo}
               alt="Logo"
-              className="w-[170px] md:w-[180px] object-contain"
+              className="w-[190px] md:w-[300px] object-contain"
             />
           </Link>
 
@@ -103,14 +103,14 @@ const Navbar = () => {
           <div className="hidden md:flex flex-1 justify-center px-10">
             <form
               onSubmit={handleSearch}
-              className="flex items-center w-full max-w-md bg-white border border-gray-200 rounded-full px-3 py-2 shadow-sm hover:shadow-md focus-within:ring-2 focus-within:ring-green-400 transition"
+              className="flex items-center w-full max-w-md bg-white border border-green-400 rounded-full px-3 py-2 shadow-sm hover:shadow-md focus-within:ring-2 focus-within:ring-green-400 transition"
             >
               <input
                 type="text"
                 placeholder="Search for products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 outline-none px-2 text-gray-700 bg-transparent text-sm"
+                className="flex-1 outline-none px-4 p-3  text-gray-700 bg-transparent text-sm"
               />
               <button type="submit">
                 <Search
