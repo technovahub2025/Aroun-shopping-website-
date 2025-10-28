@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
-import { FaStar, FaStarHalfAlt, FaRegStar, FaArrowLeft } from "react-icons/fa";
+import { FaStar, FaStarHalfAlt, FaRegStar, FaArrowLeft, FaTimes } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../redux/cartSlice";
 import { toast } from "react-toastify";
@@ -13,10 +13,10 @@ const ProductDetails = () => {
   const [mainImage, setMainImage] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items || []);
-  const user = useSelector((state) => state.user.user);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -53,9 +53,7 @@ const ProductDetails = () => {
         const relatedProducts = all.filter((p) => {
           if (p._id === product._id) return false;
           const sameType = p.type === product.type;
-          const sameCat = p.categories?.some((c) =>
-            product.categories?.includes(c)
-          );
+          const sameCat = p.categories?.some((c) => product.categories?.includes(c));
           return sameType || sameCat;
         });
         setRelated(relatedProducts.slice(0, 4));
@@ -67,11 +65,6 @@ const ProductDetails = () => {
   }, [product]);
 
   const handleAddToCart = () => {
-    if (!user) {
-      toast.error("Please login to add items to cart");
-      return;
-    }
-    
     const exists = cartItems.some((item) => item.id === product._id);
     if (exists) {
       toast.info("This product is already in your cart!");
@@ -99,19 +92,22 @@ const ProductDetails = () => {
       </Link>
 
       {/* Product Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10  items-start">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
         {/* Left: Image Gallery */}
         <div>
-          <div className="w-full h-[450px]  rounded-2xl overflow-hidden  mb-4 flex items-center justify-center">
+          <div
+            className="w-full h-[400px] md:h-[450px] bg-gray-50 rounded-2xl overflow-hidden mb-4 flex items-center justify-center cursor-pointer"
+            onClick={() => setIsModalOpen(true)}
+          >
             <img
               src={mainImage}
               alt={product.name}
-              className="max-h-[430px] object-contain transition duration-300"
+              className="max-h-full object-contain transition duration-300 hover:scale-105"
             />
           </div>
 
           {/* Thumbnail preview */}
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center flex-wrap">
             {(product.images?.length ? product.images : [mainImage]).map(
               (img, idx) => (
                 <img
@@ -132,19 +128,13 @@ const ProductDetails = () => {
 
         {/* Right: Product Info */}
         <div className="space-y-5">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
+          <h1 className="text-2xl md:text-4xl font-bold text-gray-800">
             {product.title}
           </h1>
 
-          <div>
-            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-1">
-              Description
-            </h3>
-            <p className="text-gray-700 leading-relaxed">
-              {product.description ||
-                "No description available for this product."}
-            </p>
-          </div>
+          <p className="text-gray-700 leading-relaxed">
+            {product.description || "No description available for this product."}
+          </p>
 
           <div className="flex items-center space-x-2">
             {renderStars(product.rating || 0)}
@@ -172,19 +162,18 @@ const ProductDetails = () => {
             ₹{product.price?.toLocaleString()}
           </p>
 
-          <p className="text-xl font-semibold text-green-600">
+          <p className="text-lg font-semibold text-green-600">
             Stock : {product.stock}
           </p>
 
           {/* Buttons */}
-          <div className="flex gap-3 mt-6">
+          <div className="flex gap-3 mt-6 flex-wrap">
             <button
               onClick={handleAddToCart}
-              className="bg-red-500  hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition duration-300"
+              className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md transition duration-300"
             >
               Add to Cart
             </button>
-          
           </div>
         </div>
       </div>
@@ -192,18 +181,17 @@ const ProductDetails = () => {
       {/* Related Products */}
       {related.length > 0 && (
         <div className="mt-20">
-          <h2 className="text-2xl font-bold mb-8 text-gray-800">
+          <h2 className="text-2xl font-bold mb-8 text-gray-800 text-center md:text-left">
             Related Products
           </h2>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
             {related.map((item) => (
               <Link
                 key={item._id}
                 to={`/products/${item._id}`}
                 className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-transform transform hover:scale-[1.02] duration-300"
               >
-                <div className="w-full h-56 bg-gray-50 flex items-center justify-center overflow-hidden">
+                <div className="w-full h-48 bg-gray-50 flex items-center justify-center overflow-hidden">
                   <img
                     src={item.images?.[0] || "/placeholder.png"}
                     alt={item.name}
@@ -221,6 +209,23 @@ const ProductDetails = () => {
               </Link>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Image Modal View */}
+      {isModalOpen && (
+       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md p-4">
+          <button
+            onClick={() => setIsModalOpen(false)}
+            className="absolute top-4 right-4 text-green-600 bg-red-200 p-3 text-2xl hover:text-gray-300"
+          >
+            <FaTimes />
+          </button>
+          <img
+            src={mainImage}
+            alt="Full View"
+            className="max-h-[90vh] max-w-full object-contain rounded-lg shadow-lg"
+          />
         </div>
       )}
     </div>

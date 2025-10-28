@@ -28,7 +28,7 @@ const Footer = () => {
           {/* Brand Section */}
           <div className="space-y-4">
             <div className="flex items-center">
-              <img src={logo} alt="Logo" className="h-12 w-auto object-contain" />
+              <img src={logo} alt="Logo" className="h-20 w-auto object-contain" />
             
             </div>
             <p className="text-gray-600 text-sm">
@@ -82,7 +82,7 @@ const Footer = () => {
                   className="flex items-center space-x-3 text-gray-600 hover:text-green-600 transition-colors"
                 >
                   <Phone className="w-5 h-5 text-green-600" />
-                  <span>+91 98765 43210</span>
+                  <span>+91  9360962810</span>
                 </a>
               </li>
               <li>

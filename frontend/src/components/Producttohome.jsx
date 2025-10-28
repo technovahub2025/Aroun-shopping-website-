@@ -2,14 +2,15 @@ import React, { useEffect, useState } from "react";
 import productApi from "../../api/productApi";
 import { Link } from "react-router-dom";
 import { FaStar, FaStarHalfAlt, FaRegStar } from "react-icons/fa";
-import { Loader2 } from "lucide-react"; // For animation icon
+import { Loader2 } from "lucide-react";
 import Title from "./Title";
 
 const Producttohome = () => {
   const [products, setProducts] = useState([]);
-  const [visibleCount, setVisibleCount] = useState(8); // initially show 8 products
+  const [visibleCount, setVisibleCount] = useState(8); // initially show 8
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [filter, setFilter] = useState(""); // category filter
 
   // Fetch all products
   useEffect(() => {
@@ -38,13 +39,24 @@ const Producttohome = () => {
     return stars;
   };
 
+  // Unique category list (for dropdown)
+  const categories = [...new Set(products.map((p) => p.category).filter(Boolean))];
+
+  // Filtered products
+  const filteredProducts = filter
+    ? products.filter((p) => p.category === filter)
+    : products;
+
+  // Visible subset
+  const visibleProducts = filteredProducts.slice(0, visibleCount);
+
   // Load more handler
   const handleLoadMore = () => {
     setLoadingMore(true);
     setTimeout(() => {
       setVisibleCount((prev) => prev + 8);
       setLoadingMore(false);
-    }, 1000); // simulate network delay
+    }, 1000);
   };
 
   // Main loading state
@@ -64,19 +76,37 @@ const Producttohome = () => {
       </div>
     );
 
-  // Filter products to show limited count
-  const visibleProducts = products.slice(0, visibleCount);
-
   return (
     <div className="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 md:px-10 lg:px-16">
       <Title text="Explore Our Latest Products" />
 
-      {/* Product grid */}
+      {/* Category Filter */}
+      {categories.length > 0 && (
+        <div className="flex justify-end mb-6">
+          <select
+            value={filter}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setVisibleCount(8);
+            }}
+            className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 shadow-sm focus:ring-2 focus:ring-green-400 focus:outline-none"
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Product Grid */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {visibleProducts.map((product) => (
           <div
             key={product._id}
-            className="bg-white rounded-2xl mt-4 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-2 md:p-[90px] flex flex-col"
+            className="bg-white rounded-2xl mt-4 md:p-[90px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-3 flex flex-col"
           >
             <Link to={`/products/${product._id}`}>
               <img
@@ -86,7 +116,7 @@ const Producttohome = () => {
                   product.image ||
                   "/placeholder.jpg"
                 }
-                alt={product.name || product.title || "product image"}
+                alt={product.name || "product image"}
                 loading="lazy"
                 className="w-full h-48 object-cover rounded-xl"
               />
@@ -96,6 +126,12 @@ const Producttohome = () => {
               <h2 className="text-lg font-semibold text-gray-800 line-clamp-1">
                 {product.name}
               </h2>
+
+              {product.category && (
+                <span className="text-xs font-medium text-gray-600 bg-gray-200 px-2 py-1 rounded-md w-fit mt-1">
+                  {product.category}
+                </span>
+              )}
 
               <p className="text-gray-500 text-sm mt-1 line-clamp-2">
                 {product.description || "No description available"}
@@ -121,8 +157,8 @@ const Producttohome = () => {
         ))}
       </div>
 
-      {/* Load more button */}
-      {visibleCount < products.length && (
+      {/* Load More Button */}
+      {visibleCount < filteredProducts.length && (
         <div className="flex justify-center mt-10">
           <button
             onClick={handleLoadMore}

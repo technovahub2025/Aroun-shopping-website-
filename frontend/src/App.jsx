@@ -15,6 +15,8 @@ import ProductDetails from "./pages/ProductDetails";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
 import LayoutDashboard from "./pages/admin/LayoutDashboard";
+import BackToTop from "./components/BackToTop";
+import WhatsAppButton from "./components/WhatsAppButton";
 
 // Lazy-loaded pages
 const Checkout = React.lazy(() => import('./pages/Checkout'));
@@ -28,7 +30,7 @@ const AppContent = () => {
 
   return (
     <>
-      {!hideNavbar && <Navbar />}
+      {!hideNavbar && <Navbar />  }
 
       <Routes>
         {/* Public Routes */}
@@ -90,6 +92,8 @@ const AppContent = () => {
         <>
           <BottomNav />
           <Footer />
+          <BackToTop />
+          <WhatsAppButton />
         </>
       )}
     </>

@@ -1,7 +1,13 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
-import { FaStar, FaStarHalfAlt, FaRegStar, FaFilter, FaTimes } from "react-icons/fa";
+import {
+  FaStar,
+  FaStarHalfAlt,
+  FaRegStar,
+  FaFilter,
+  FaTimes,
+} from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ProductList = () => {
@@ -28,22 +34,25 @@ const ProductList = () => {
 
   const selectedCategory = searchParams.get("category");
 
+  // ✅ Fetch products
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await productApi.getAll();
-        setProducts(res.data);
+        const data = res.data || [];
+
+        setProducts(data);
+
+        // ✅ since category is a single string
         setAvailableCategories(
-          Array.from(new Set(res.data.flatMap((p) => p.categories || [])))
-        );
-        setAvailableTypes(
-          Array.from(new Set(res.data.flatMap((p) => (p.type ? [p.type] : []))))
+          Array.from(new Set(data.map((p) => p.category).filter(Boolean)))
         );
 
-        // 🟢 Auto-filter by category from URL if exists
-        if (selectedCategory) {
-          setCategoryFilters([selectedCategory]);
-        }
+        setAvailableTypes(
+          Array.from(new Set(data.map((p) => p.type).filter(Boolean)))
+        );
+
+        if (selectedCategory) setCategoryFilters([selectedCategory]);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
       } finally {
@@ -53,13 +62,14 @@ const ProductList = () => {
     fetchData();
   }, [selectedCategory]);
 
-  // Handle responsive resizing
+  // Handle window resize
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ Filter logic
   const handleCategoryChange = (cat) => {
     setCategoryFilters((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
@@ -74,14 +84,19 @@ const ProductList = () => {
     setCurrentPage(1);
   };
 
+  // ✅ Filtering + sorting
   const filteredAndSortedProducts = useMemo(() => {
     let temp = [...products];
-    if (categoryFilters.length > 0)
+
+    if (categoryFilters.length > 0) {
       temp = temp.filter((p) =>
-        categoryFilters.some((f) => p.categories.includes(f))
+        categoryFilters.some((f) => p.category === f)
       );
-    if (typeFilters.length > 0)
-      temp = temp.filter((p) => typeFilters.some((f) => p.type === f));
+    }
+
+    if (typeFilters.length > 0) {
+      temp = temp.filter((p) => typeFilters.includes(p.type));
+    }
 
     switch (sortBy) {
       case "Price: Low to High":
@@ -96,6 +111,7 @@ const ProductList = () => {
       default:
         break;
     }
+
     return temp;
   }, [products, categoryFilters, typeFilters, sortBy]);
 
@@ -106,7 +122,7 @@ const ProductList = () => {
   );
   const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
 
-  const renderStars = (rating) => {
+  const renderStars = (rating = 0) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       if (rating >= i) stars.push(<FaStar key={i} className="text-yellow-400" />);
@@ -118,7 +134,11 @@ const ProductList = () => {
   };
 
   if (loading)
-    return <div className="text-center text-gray-500 py-20 ">Loading products...</div>;
+    return (
+      <div className="text-center text-gray-500 py-20">
+        Loading products...
+      </div>
+    );
   if (error)
     return <p className="text-center text-red-500 py-20">Error: {error}</p>;
 
@@ -155,7 +175,7 @@ const ProductList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* Filter Sidebar + Overlay */}
+        {/* Filters */}
         <AnimatePresence>
           {showFilters && !isDesktop && (
             <motion.div
@@ -202,10 +222,10 @@ const ProductList = () => {
                 </h2>
               )}
 
-              {/* Categories */}
+              {/* Category Filter */}
               {availableCategories.length > 0 && (
                 <div className="mb-6">
-                  <h3 className="font-semibold mb-2 text-gray-700">Categories</h3>
+                  <h3 className="font-semibold mb-2 text-gray-700">Category</h3>
                   {availableCategories.map((cat) => (
                     <label
                       key={cat}
@@ -223,7 +243,7 @@ const ProductList = () => {
                 </div>
               )}
 
-              {/* Types */}
+              {/* Type Filter */}
               {availableTypes.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-2 text-gray-700">Type</h3>
@@ -252,24 +272,24 @@ const ProductList = () => {
           {filteredAndSortedProducts.length === 0 ? (
             <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
               {currentProducts.map((product) => (
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
-                  className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+                  className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 >
                   <div className="relative bg-gray-50 flex items-center justify-center aspect-[4/3] overflow-hidden">
                     <img
                       src={product.images?.[0] || "/placeholder.png"}
-                      alt={product.name}
+                      alt={product.title}
                       className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
 
                   <div className="p-4 text-center">
                     <h3 className="text-base font-semibold text-gray-800 line-clamp-2 mb-1">
-                      {product.name}
+                      {product.title}
                     </h3>
 
                     {product.type && (
