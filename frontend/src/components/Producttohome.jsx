@@ -77,7 +77,7 @@ const Producttohome = () => {
     );
 
   return (
-    <div className="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 md:px-10 lg:px-16">
+    <div className="bg-gray-50  min-h-screen py-10 px-4 sm:px-6 md:px-10 lg:px-16">
       <Title text="Explore Our Latest Products" />
 
       {/* Category Filter */}
@@ -102,11 +102,11 @@ const Producttohome = () => {
       )}
 
       {/* Product Grid */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 ">
         {visibleProducts.map((product) => (
           <div
             key={product._id}
-            className="bg-white rounded-2xl mt-4 md:p-[40px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-3 flex flex-col"
+            className="bg-white rounded-2xl mt-4 md:p-[10px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-3 flex flex-col"
           >
             <Link to={`/products/${product._id}`}>
               <img
@@ -118,7 +118,7 @@ const Producttohome = () => {
                 }
                 alt={product.name || "product image"}
                 loading="lazy"
-                className="w-full h-48 object-cover rounded-xl"
+                className="w-full md:h-[50vh] object-cover rounded-xl"
               />
             </Link>
 

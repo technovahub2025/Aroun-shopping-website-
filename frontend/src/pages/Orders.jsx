@@ -47,14 +47,14 @@ const Orders = () => {
   );
 
   if (!orders || orders.length === 0) return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto  px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">My Orders</h1>
-      <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">No orders yet.</div>
+      <div className="bg-white rounded-lg shadow h-[100vh] p-6 text-center text-gray-500">No orders yet.</div>
     </div>
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl  mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Orders</h1>
 
       <div className="space-y-6">

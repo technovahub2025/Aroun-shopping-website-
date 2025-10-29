@@ -13,10 +13,10 @@ const Hero = () => {
         
         {/* Text Content */}
         <div className="flex-1 mt-[-60px] md:mt-0 text-center md:text-left space-y-6">
-          <h1 className="text-6xl md:text-6xl font-extrabold text-[#ee1116] leading-tight">
+          <h1 className="text-3xl md:text-6xl font-extrabold text-[#ee1116] leading-tight">
             Discover <span className="text-green-600">Amazing Products</span>
           </h1>
-          <p className="text-gray-700 text-lg md:text-xl max-w-md mx-auto md:mx-0">
+          <p className="text-gray-700 text-md md:text-xl max-w-md mx-auto md:mx-0">
             Explore a wide range of Snackes, Juice, Soap, and home products at the best prices. New arrivals every week!
           </p>
 

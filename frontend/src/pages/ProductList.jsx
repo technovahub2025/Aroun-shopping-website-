@@ -135,7 +135,7 @@ const ProductList = () => {
 
   if (loading)
     return (
-      <div className="text-center text-gray-500 py-20">
+      <div className="text-center h-[100vh] text-gray-500 py-20">
         Loading products...
       </div>
     );

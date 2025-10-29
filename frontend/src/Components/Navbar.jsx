@@ -69,18 +69,18 @@ const Navbar = () => {
         {/* Top Info Bar */}
         <div className="bg-green-500 text-white text-[16px] md:text-sm px-4 py-2 flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-0 text-center md:text-left">
          
-          <p className="uppercase font-bold text-[16px] md:text-xl tracking-wide">
+          <p className="uppercase font-bold text-[16px]  tracking-wide">
             🚚 Free Shipping on Orders Over ₹500
           </p>
 
            <div className="flex justify-center font-bold md:justify-start items-center gap-4">
             <div className="flex items-center gap-1">
-              <MapPin size={20} />
-              <span  className="uppercase font-bold text-[12px] md:text-xl tracking-wide">Lawspet, Puducherry</span>
+              <MapPin size={16} />
+              <span  className="uppercase font-bold text-[12px] tracking-wide">Lawspet, Puducherry</span>
             </div>
             <div className="flex items-center font-bold gap-1 hover:text-yellow-200 transition">
-              <Phone size={20} />
-              <span  className="uppercase font-bold text-[12px] md:text-xl tracking-wide">+91 9876543210</span>
+              <Phone size={16} />
+              <span  className="uppercase font-bold text-[12px]  tracking-wide">+91 9876543210</span>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ const Navbar = () => {
             <img
               src={Logo}
               alt="Logo"
-              className="w-[190px] md:w-[300px] object-contain"
+              className="w-[150px] md:w-[200px] object-contain"
             />
           </Link>
 
@@ -110,7 +110,7 @@ const Navbar = () => {
                 placeholder="Search for products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 outline-none px-4 p-3  text-gray-700 bg-transparent text-sm"
+                className="flex-1 outline-none px-4 p-2  text-gray-700 bg-transparent text-sm"
               />
               <button type="submit">
                 <Search
