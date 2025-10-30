@@ -9,7 +9,8 @@ const cartRoutes = require('./routes/cartRoute');
 const orderRoutes = require('./routes/orderRoute');
 const userRoutes = require('./routes/userRoute');
 const paymentRoutes = require('./routes/paymentRoute');
-
+const notificationRoutes = require('./routes/notificationRoute');
+const { checkAndNotifyLowStock } = require('./controllers/notificationController');
 
 require('dotenv').config();
 const app = express();
@@ -35,11 +36,10 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/notifications', notificationRoutes);
 
-
-
-
-
+// Check for low stock products every hour
+setInterval(checkAndNotifyLowStock, 60 * 60 * 1000);
 
 // Start server
 const PORT = process.env.PORT || 5000;

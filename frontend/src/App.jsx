@@ -6,6 +6,7 @@ import Navbar from "./Components/Navbar";
 import BottomNav from "./components/BottomNav";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ChatBot from "./components/ChatBot";
 
 // Pages
 import Home from "./pages/Home";
@@ -94,6 +95,7 @@ const AppContent = () => {
           <Footer />
           <BackToTop />
           <WhatsAppButton />
+          <ChatBot />
         </>
       )}
     </>
