@@ -81,3 +81,116 @@ exports.logout = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+/// for development purpose only
+exports.createUser = async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      phone,
+      street,
+      city,
+      zipcode,
+      role,
+    } = req.body;
+
+    // Check for required fields
+    if (!email || !password || !role) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: "Email already exists" });
+    }
+
+    // Create new user object
+    const newUser = new User({
+      firstName,
+      lastName,
+      email,
+      password, // hashing will depend on your model/middleware
+      phone,
+      address: {
+        street: street || "",
+        city: city || "",
+        zipcode: zipcode || "",
+      },
+    });
+
+    // Save to database
+    await newUser.save();
+
+    res.status(201).json({
+      message: "User created successfully",
+      user: newUser,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to create user" });
+  }
+};
+
+exports.updateUser = async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    const users = await User.findById(req.params.id);
+    if (!users) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (role !== undefined) users.role = role;
+    await users.save();
+
+    res.json({
+      message: "User updated successfully",
+      users,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update user" });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({
+      message: "User deleted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete user" });
+  }
+};
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select("-password"); // exclude password for security
+
+    if (!users || users.length === 0) {
+      return res.status(404).json({
+        message: "No users found",
+      });
+    }
+    res.status(200).json({
+      message: "Users fetched successfully",
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Failed to fetch users",
+    });
+  }
+};
+

@@ -16,7 +16,7 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json()); 
 app.use(cookieParser());
 // Enable CORS for all origins
 app.use(cors({
@@ -43,6 +43,8 @@ setInterval(checkAndNotifyLowStock, 60 * 60 * 1000);
 
 // Start server
 const PORT = process.env.PORT || 5000;
-
+app.get('/', (req, res) => {
+  res.send('Server is running...');
+});
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT} `));
