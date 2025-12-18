@@ -5,6 +5,7 @@ import { FaStar, FaStarHalfAlt, FaRegStar, FaArrowLeft, FaTimes } from "react-ic
 import { useDispatch, useSelector } from "react-redux";
 import { addToCart } from "../redux/cartSlice";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -14,6 +15,7 @@ const ProductDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const dispatch = useDispatch();
   const cartItems = useSelector((state) => state.cart.items || []);
@@ -65,13 +67,24 @@ const ProductDetails = () => {
   }, [product]);
 
   const handleAddToCart = () => {
+    const token = localStorage.getItem("token");
     const exists = cartItems.some((item) => item.id === product._id);
     if (exists) {
-      toast.info("This product is already in your cart!");
-    } else {
-      dispatch(addToCart({ product, qty: 1 }));
-      toast.success("Added to cart!");
+      return toast.info("This product is already in your cart!");
     }
+    if (!token) {
+      toast.info("Please login to continue");
+      navigate("/", {
+        state: {
+          openAuth: true,
+          authMode: "login",
+        },
+      });
+      return;
+    }
+
+    dispatch(addToCart({ product, qty: 1 }));
+    toast.success("Added to cart!");
   };
 
   if (loading)
@@ -133,7 +146,8 @@ const ProductDetails = () => {
           </h1>
 
           <p className="text-gray-700 leading-relaxed">
-            {product.description || "No description available for this product."}
+            {product.description ||
+              "No description available for this product."}
           </p>
 
           <div className="flex items-center space-x-2">
@@ -157,12 +171,28 @@ const ProductDetails = () => {
               </span>
             </p>
           )}
+          <div className="flex items-center gap-3">
+            {/* Price + MRP */}
+            <div className="flex flex-row gap-3.5">
+              <p className="text-3xl font-semibold text-red-600">
+                ₹{product.price?.toLocaleString()}
+              </p>
+              {/* MRP */}
+              {product.mrp && (
+                <p className="text-lg text-gray-500 line-through">
+                  ₹{product.mrp.toLocaleString()}
+                </p>
+              )}
+            </div>
+          </div>
+          {/* Discount Badge */}
+          {product.discount && (
+            <span className="bg-green-100 text-green-700 text-sm font-semibold px-2 py-1 rounded-md">
+              {product.discount}% OFF
+            </span>
+          )}
 
-          <p className="text-3xl font-semibold text-red-600">
-            ₹{product.price?.toLocaleString()}
-          </p>
-
-          <p className="text-lg font-semibold text-green-600">
+          <p className="text-lg font-semibold text-green-600 mt-2">
             Stock : {product.stock}
           </p>
 
@@ -214,7 +244,7 @@ const ProductDetails = () => {
 
       {/* Image Modal View */}
       {isModalOpen && (
-       <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/10 backdrop-blur-md p-4">
           <button
             onClick={() => setIsModalOpen(false)}
             className="absolute top-4 right-4 text-green-600 bg-red-200 p-3 text-2xl hover:text-gray-300"

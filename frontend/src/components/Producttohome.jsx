@@ -142,12 +142,34 @@ const Producttohome = () => {
               </div>
 
               <div className="mt-3 flex justify-between items-center">
-                <span className="text-lg font-bold text-red-600">
-                  ₹{product.price}
-                </span>
+                {/* Price Section */}
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    {/* Selling Price */}
+                    <span className="text-lg font-bold text-red-600">
+                      ₹{product.price}
+                    </span>
+
+                    {/* MRP (Strike) */}
+                    {product.mrp && (
+                      <span className="text-sm text-gray-500 line-through">
+                        ₹{product.mrp}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Discount Badge */}
+                  {product.mrp && (
+                    <span className="text-xs text-green-600 font-semibold">
+                      {product.discount}% OFF
+                    </span>
+                  )}
+                </div>
+
+                {/* View Button */}
                 <Link
                   to={`/products/${product._id}`}
-                  className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-600 transition"
+                  className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-600 transition cursor-pointer"
                 >
                   View
                 </Link>

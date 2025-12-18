@@ -29,6 +29,8 @@ const Products = () => {
     category: "",
     type: "",
     rating: "",
+    mrp: "",
+    discount: "",
     images: [],
   });
 
@@ -86,6 +88,8 @@ const Products = () => {
         category: product.category || "",
         type: product.type || "",
         rating: product.rating || "",
+        mrp: product.mrp || "",
+        discount: product.discount || "",
         images:
           product.images?.map((url) => ({
             preview: url,
@@ -122,11 +126,15 @@ const Products = () => {
 
     try {
       if (editingProduct) {
+        setLoading(true);
         await productApi.update(editingProduct._id, data, config);
         toast.success("Product updated successfully!");
+        setLoading(false);
       } else {
+        setLoading(true);
         await productApi.create(data, config);
         toast.success("Product added successfully!");
+        setLoading(false);
       }
       setShowModal(false);
       fetchProducts();
@@ -170,12 +178,10 @@ const Products = () => {
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Product Management
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-800">Product Management</h1>
         <button
           onClick={() => openModal()}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer"
         >
           <Plus className="w-5 h-5" /> Add Product
         </button>
@@ -254,13 +260,13 @@ const Products = () => {
                   <td className="px-4 py-3 text-right flex justify-end gap-2">
                     <button
                       onClick={() => openModal(p)}
-                      className="p-2 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100"
+                      className="p-2 rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(p._id)}
-                      className="p-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100"
+                      className="p-2 rounded-md bg-red-50 text-red-600 hover:bg-red-100 cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -383,6 +389,35 @@ const Products = () => {
                   />
                 </div>
               </div>
+              {/* MRP & Discount */}
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    MRP
+                  </label>
+                  <input
+                    type="number"
+                    name="mrp"
+                    value={formData.mrp}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 w-full border rounded-md p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Discount
+                  </label>
+                  <input
+                    type="number"
+                    name="discount"
+                    value={formData.discount}
+                    onChange={handleChange}
+                    required
+                    className="mt-1 w-full border rounded-md p-2"
+                  />
+                </div>
+              </div>
 
               {/* Drag & Drop Image Upload */}
               <div>
@@ -437,15 +472,26 @@ const Products = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50"
+                  className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                >
-                  {editingProduct ? "Update Product" : "Create Product"}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-md text-white transition-all duration-200
+                              ${
+                                loading
+                                  ? "bg-red-400 cursor-wait"
+                                  : "bg-red-500 hover:bg-red-600 cursor-pointer"
+                              }
+                            `}
+                   >
+                  {loading
+                    ? "Please wait..."
+                    : editingProduct
+                    ? "Update Product"
+                    : "Create Product"}
                 </button>
               </div>
             </form>
