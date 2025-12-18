@@ -30,7 +30,7 @@ const Products = () => {
     type: "",
     rating: "",
     mrp: "",
-    discount: "",
+   
     images: [],
   });
 
@@ -89,7 +89,7 @@ const Products = () => {
         type: product.type || "",
         rating: product.rating || "",
         mrp: product.mrp || "",
-        discount: product.discount || "",
+       
         images:
           product.images?.map((url) => ({
             preview: url,
@@ -105,6 +105,7 @@ const Products = () => {
         category: "",
         type: "",
         rating: "",
+        mrp: "",
         images: [],
       });
     }
@@ -210,6 +211,7 @@ const Products = () => {
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Price</th>
+              <th className="px-4 py-3">MRP</th>
               <th className="px-4 py-3">Stock</th>
               <th className="px-4 py-3">Rating</th>
               <th className="px-4 py-3 text-right">Actions</th>
@@ -247,6 +249,7 @@ const Products = () => {
                   </td>
                   <td className="px-4 py-3">{p.category || "-"}</td>
                   <td className="px-4 py-3">₹{p.price}</td>
+                  {p.mrp ? <td className="px-4 py-3">₹{p.mrp}</td> : <td className="px-4 py-3">-</td> }
                   <td className="px-4 py-3">{p.stock}</td>
                   <td className="px-4 py-3">
                     {p.rating ? (
@@ -404,19 +407,6 @@ const Products = () => {
                     className="mt-1 w-full border rounded-md p-2"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Discount
-                  </label>
-                  <input
-                    type="number"
-                    name="discount"
-                    value={formData.discount}
-                    onChange={handleChange}
-                    required
-                    className="mt-1 w-full border rounded-md p-2"
-                  />
-                </div>
               </div>
 
               {/* Drag & Drop Image Upload */}
@@ -486,7 +476,7 @@ const Products = () => {
                                   : "bg-red-500 hover:bg-red-600 cursor-pointer"
                               }
                             `}
-                   >
+                >
                   {loading
                     ? "Please wait..."
                     : editingProduct

@@ -186,9 +186,10 @@ const ProductDetails = () => {
             </div>
           </div>
           {/* Discount Badge */}
-          {product.discount && (
+          {product.mrp && product.price && (
             <span className="bg-green-100 text-green-700 text-sm font-semibold px-2 py-1 rounded-md">
-              {product.discount}% OFF
+              {Math.round((Math.abs(product.mrp - product.price) / product.mrp) * 100)}%
+              OFF
             </span>
           )}
 
