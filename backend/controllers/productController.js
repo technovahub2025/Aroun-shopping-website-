@@ -22,7 +22,7 @@ const uploadImages = async (files) => {
 // ✅ CREATE Product
 exports.createProduct = async (req, res) => {
   try {
-    const { title, description, price, rating, category, stock } = req.body;
+    const { title, description, price, rating, category, stock ,mrp,discount} = req.body;
 
     // Upload images to Cloudinary
     const imageUrls =
@@ -35,6 +35,8 @@ exports.createProduct = async (req, res) => {
       rating,
       category, // single category
       images: imageUrls,
+      mrp: mrp ? Number(mrp) : 0,
+      discount: discount ? Number(discount) : 0,
       stock: stock ? Number(stock) : 0,
     });
 
@@ -74,7 +76,7 @@ exports.getProduct = async (req, res) => {
 // ✅ UPDATE Product
 exports.updateProduct = async (req, res) => {
   try {
-    const { title, description, price, rating, category, stock } = req.body;
+    const { title, description, price, rating, category, stock ,mrp,discount} = req.body;
 
     const product = await Product.findById(req.params.id);
     if (!product)
@@ -86,6 +88,8 @@ exports.updateProduct = async (req, res) => {
     if (price) product.price = price;
     if (rating) product.rating = rating;
     if (category) product.category = category;
+    if(mrp) product.mrp = Number(mrp);
+    if(discount) product.discount = Number(discount);
     if (stock !== undefined) product.stock = Number(stock);
 
     // Append new images if uploaded

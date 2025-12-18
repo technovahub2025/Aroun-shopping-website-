@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { sendOTP, verifyOTP } = require('../utils/twilio');
 const generateToken = require('../utils/jwt');
+const bcrypt = require("bcryptjs");
 
 // 1️⃣ Send OTP
 exports.sendOtp = async (req, res) => {
@@ -193,4 +194,100 @@ exports.getAllUsers = async (req, res) => {
     });
   }
 };
+
+//Register logic
+/* ================= PASSWORD REGISTER ================= */
+exports.registerWithPassword = async (req, res) => {
+  try {
+    const { name, phone, password } = req.body;
+
+    if (!phone || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const existingUser = await User.findOne({ phone });
+    if (existingUser) {
+      return res.status(409).json({ message: "Phone Number already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      firstName:name,
+      phone,
+      password: hashedPassword,
+    });
+
+    const token = generateToken(user);
+
+    res.status(201).json({
+      message: "Registration successful",
+      user: {
+        id: user._id,
+        phone: user.phone,
+        role: user.role,
+      },
+      token,
+    });
+  } catch (err) {
+    console.error("Register Error:", err.message || err);
+    res.status(500).json({ message: "Registration failed" });
+  }
+};
+
+//Login logic
+/* ================= PASSWORD LOGIN ================= */
+exports.loginWithPassword = async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+
+    if (!phone || !password) {
+      return res.status(400).json({ message: "Phone & password required" });
+    }
+
+    const user = await User.findOne({ phone });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    console.log(user);
+
+    if (!user.password) {
+      return res
+        .status(400)
+        .json({ message: "Password login not enabled for this account" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = generateToken(user);
+
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    };
+
+    res.cookie("token", token, cookieOptions);
+
+    res.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        phone: user.phone,
+        role: user.role,
+        name:user.firstName,
+        token,
+      },
+      token,
+    });
+  } catch (err) {
+    console.error("Login Error:", err.message || err);
+    res.status(500).json({ message: "Login failed" });
+  }
+};
+
 
