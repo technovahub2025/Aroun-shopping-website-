@@ -18,6 +18,9 @@ const productApi = {
 
   // Delete product by ID
   remove: (id) => apiClient.delete(`${BASE_URL}/${id}`),
+
+  //Delete product image by ID
+  deleteImage: (id,productData) => apiClient.put(`${BASE_URL}/${id}/image`,productData),
 };
 
 export default productApi;

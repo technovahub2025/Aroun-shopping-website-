@@ -53,7 +53,7 @@ const Navbar = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log("Searching for:", searchTerm);
+    
   };
 
   useEffect(() => {
@@ -163,7 +163,7 @@ const Navbar = () => {
       });
 
       localStorage.setItem("token", data.token);
-      console.log(data);
+
 
       dispatch(setUser(data.user));
 

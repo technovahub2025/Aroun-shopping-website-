@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const upload = require("../utils/multer");
 const { 
-  createProduct, getProducts, getProduct, updateProduct, deleteProduct 
+  createProduct, getProducts, getProduct, updateProduct, deleteProduct, 
+  deleteProductImage
 } = require("../controllers/productController");
 const { protect, admin } = require("../middleware/authmiddleware");
 
@@ -12,5 +13,11 @@ router.get("/", getProducts); // keep public
 router.get("/:id", getProduct); // keep public
 router.put("/:id", protect, admin, upload.array("images", 5), updateProduct);
 router.delete("/:id", protect, admin, deleteProduct);
+// routes/productRoutes.js
+router.put(
+  "/:id/image",
+  deleteProductImage
+);
+
 
 module.exports = router;

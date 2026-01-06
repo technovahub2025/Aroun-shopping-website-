@@ -19,6 +19,17 @@ const uploadImages = async (files) => {
   );
 };
 
+const extractPublicId = (url) => {
+  const uploadIndex = url.indexOf("/upload/");
+  const publicPath = url.substring(uploadIndex + 8); // after /upload/
+  const withoutVersion = publicPath.replace(/v\d+\//, "");
+  const publicId = withoutVersion.substring(
+    0,
+    withoutVersion.lastIndexOf(".")
+  );
+  return publicId;
+};
+
 // ✅ CREATE Product
 exports.createProduct = async (req, res) => {
   try {
@@ -117,5 +128,58 @@ exports.deleteProduct = async (req, res) => {
   } catch (err) {
     console.error("Error deleting product:", err);
     res.status(500).json({ message: "Failed to delete product" });
+  }
+};
+
+exports.deleteProductImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+
+
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Image URL is required",
+      });
+    }
+
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    if (!product.images.includes(imageUrl)) {
+      return res.status(400).json({
+        success: false,
+        message: "Image not found in product",
+      });
+    }
+
+    // 🗑️ Delete from Cloudinary
+    const publicId = extractPublicId(imageUrl);
+    await cloudinary.uploader.destroy(publicId);
+
+    // 🗑️ Remove from MongoDB
+    product.images = product.images.filter(
+      (img) => img !== imageUrl
+    );
+
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Image deleted from Cloudinary and database",
+      images: product.images,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
