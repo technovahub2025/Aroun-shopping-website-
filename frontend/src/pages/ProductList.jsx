@@ -1,16 +1,20 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
+import { useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import {
   FaStar,
   FaStarHalfAlt,
   FaRegStar,
   FaFilter,
   FaTimes,
+  FaTrash,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ProductList = () => {
+  const user = useSelector((state) => state.user.user);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,7 +44,6 @@ const ProductList = () => {
       try {
         const res = await productApi.getAll();
         const data = res.data || [];
-       // const data = Array.isArray(res.data?.data) ? res.data.data : [];
 
         setProducts(data);
 
@@ -85,6 +88,43 @@ const ProductList = () => {
     setCurrentPage(1);
   };
 
+  const handleDelete = async (e, productId) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!window.confirm("Move this product to deleted list?")) return;
+
+    try {
+      await productApi.remove(productId);
+      setProducts((prev) => prev.filter((p) => p._id !== productId));
+      toast.success("Product moved to deleted list");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete product");
+    }
+  };
+
+  const handleDeleteCategory = async (e, category) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (
+      !window.confirm(
+        `Delete category "${category}"? All products in this category will move to deleted list.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await productApi.deleteCategory(category);
+      setProducts((prev) => prev.filter((p) => p.category !== category));
+      setAvailableCategories((prev) => prev.filter((c) => c !== category));
+      setCategoryFilters((prev) => prev.filter((c) => c !== category));
+      toast.success(`Category "${category}" deleted`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete category");
+    }
+  };
   // ✅ Filtering + sorting
   const filteredAndSortedProducts = useMemo(() => {
     let temp = [...products];
@@ -228,18 +268,29 @@ const ProductList = () => {
                 <div className="mb-6">
                   <h3 className="font-semibold mb-2 text-gray-700">Category</h3>
                   {availableCategories.map((cat) => (
-                    <label
+                    <div
                       key={cat}
-                      className="flex items-center mb-2 text-sm text-gray-700 cursor-pointer"
+                      className="flex items-center justify-between mb-2 text-sm"
                     >
-                      <input
-                        type="checkbox"
-                        checked={categoryFilters.includes(cat)}
-                        onChange={() => handleCategoryChange(cat)}
-                        className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
-                      />
-                      <span className="ml-2">{cat}</span>
-                    </label>
+                      <label className="flex items-center text-gray-700 cursor-pointer flex-1">
+                        <input
+                          type="checkbox"
+                          checked={categoryFilters.includes(cat)}
+                          onChange={() => handleCategoryChange(cat)}
+                          className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
+                        />
+                        <span className="ml-2">{cat}</span>
+                      </label>
+                      {user?.role === "admin" && (
+                        <button
+                          onClick={(e) => handleDeleteCategory(e, cat)}
+                          className="ml-2 p-1 rounded text-red-500 hover:bg-red-50 cursor-pointer"
+                          title={`Delete ${cat} category`}
+                        >
+                          <FaTrash size={12} />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
@@ -278,8 +329,19 @@ const ProductList = () => {
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
-                  className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                  className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 >
+                  {user?.role === "admin" && (
+                    <div className="absolute z-10 p-2">
+                      <button
+                        onClick={(e) => handleDelete(e, product._id)}
+                        className="w-8 h-8 rounded-full bg-white/90 text-red-600 shadow hover:bg-red-50 cursor-pointer flex items-center justify-center"
+                        title="Delete product"
+                      >
+                        <FaTrash size={14} />
+                      </button>
+                    </div>
+                  )}
                   <div className="relative bg-gray-50 flex items-center justify-center aspect-[4/3] overflow-hidden">
                     <img
                       src={product.images?.[0] || "/placeholder.png"}

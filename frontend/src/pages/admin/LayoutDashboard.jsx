@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Menu, X, Home, ShoppingCart, Users, Settings } from "lucide-react";
+import { Menu, X, ShoppingCart, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import AdminRoutes from './Routes';
 
@@ -44,6 +44,14 @@ const LayoutDashboard = () => {
           >
             <ShoppingCart className="w-5 h-5" />
             <span>Products</span>
+          </Link>
+
+          <Link
+            to="deleted-products"
+            className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200"
+          >
+            <Trash2 className="w-5 h-5" />
+            <span>Deleted Products</span>
           </Link>
 
           {/* <Link
