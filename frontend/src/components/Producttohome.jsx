@@ -18,6 +18,8 @@ const Producttohome = () => {
       try {
         const response = await productApi.getAll();
         setProducts(response.data || []);
+        //setProducts(Array.isArray(response.data?.data) ? response.data.data : []);
+
       } catch (error) {
         console.error("Failed to fetch products:", error);
       } finally {

@@ -40,6 +40,7 @@ const ProductList = () => {
       try {
         const res = await productApi.getAll();
         const data = res.data || [];
+       // const data = Array.isArray(res.data?.data) ? res.data.data : [];
 
         setProducts(data);
 
