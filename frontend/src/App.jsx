@@ -8,10 +8,10 @@ import { setUser } from "./redux/userSlice";
 
 // Components
 import Navbar from "./Components/Navbar";
-import BottomNav from "./components/BottomNav";
-import Footer from "./components/Footer";
-import ProtectedRoute from "./components/ProtectedRoute";
-import ChatBot from "./components/ChatBot";
+import BottomNav from "./Components/BottomNav";
+import Footer from "./Components/Footer";
+import ProtectedRoute from "./Components/ProtectedRoute";
+import ChatBot from "./Components/ChatBot";
 
 // Pages
 import Home from "./pages/Home";
@@ -21,8 +21,8 @@ import ProductDetails from "./pages/ProductDetails";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
 import LayoutDashboard from "./pages/admin/LayoutDashboard";
-import BackToTop from "./components/BackToTop";
-import WhatsAppButton from "./components/WhatsAppButton";
+import BackToTop from "./Components/BackToTop";
+import WhatsAppButton from "./Components/WhatsAppButton";
 
 // Lazy-loaded pages
 const Checkout = React.lazy(() => import('./pages/Checkout'));

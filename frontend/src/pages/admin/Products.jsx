@@ -10,10 +10,7 @@ import {
   Layers,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   Copy,
-  Clipboard,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useDropzone } from "react-dropzone";
@@ -21,8 +18,9 @@ import { ReactSortable } from "react-sortablejs";
 import productApi from "../../../api/productApi";
 
 const Products = () => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedProducts = productApi.getCachedAll() || [];
+  const [products, setProducts] = useState(cachedProducts);
+  const [loading, setLoading] = useState(cachedProducts.length === 0);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,11 +65,15 @@ const Products = () => {
   const modalRef = useRef(null);
 
   // Fetch products
-  const fetchProducts = async () => {
+  const fetchProducts = async ({ forceRefresh = false } = {}) => {
     try {
-      setLoading(true);
-      const res = await productApi.getAll();
-      setProducts(res.data || []);
+      if (products.length === 0) {
+        setLoading(true);
+      }
+
+      const res = await productApi.getAll(undefined, { forceRefresh });
+      const nextProducts = Array.isArray(res.data) ? res.data : [];
+      setProducts(nextProducts);
     } catch {
       toast.error("Failed to fetch products");
     } finally {
@@ -80,7 +82,7 @@ const Products = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts({ forceRefresh: cachedProducts.length > 0 });
   }, []);
 
   // Setup paste event listener when modal is open
@@ -384,7 +386,6 @@ const Products = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Generate page numbers to display
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
@@ -393,37 +394,28 @@ const Products = () => {
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
       }
-    } else {
-      let startPage = Math.max(2, currentPage - 1);
-      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      return pageNumbers;
+    }
 
-      if (currentPage <= 3) {
-        startPage = 2;
-        endPage = 4;
-      }
+    let startPage = Math.max(1, currentPage - 1);
+    let endPage = Math.min(totalPages, currentPage + 2);
 
-      if (currentPage >= totalPages - 2) {
-        startPage = totalPages - 3;
-        endPage = totalPages - 1;
-      }
+    if (currentPage <= 2) {
+      startPage = 1;
+      endPage = 4;
+    }
 
-      pageNumbers.push(1);
+    if (currentPage >= totalPages - 1) {
+      startPage = totalPages - 3;
+      endPage = totalPages;
+    }
 
-      if (startPage > 2) {
-        pageNumbers.push("...");
-      }
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i);
-      }
-
-      if (endPage < totalPages - 1) {
-        pageNumbers.push("...");
-      }
-
-      if (totalPages > 1) {
-        pageNumbers.push(totalPages);
-      }
+    if (endPage < totalPages) {
+      pageNumbers.push("...");
     }
 
     return pageNumbers;
@@ -431,12 +423,7 @@ const Products = () => {
 
   // Handle page change
   const handlePageChange = (pageNumber) => {
-    if (
-      pageNumber < 1 ||
-      pageNumber > totalPages ||
-      pageNumber === "..."
-    )
-      return;
+    if (pageNumber < 1 || pageNumber > totalPages) return;
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -613,45 +600,35 @@ const Products = () => {
             Page {currentPage} of {totalPages}
           </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => handlePageChange(1)}
-              disabled={currentPage === 1}
-              className={`p-2 rounded-md ${
-                currentPage === 1
-                  ? "text-gray-400 cursor-not-allowed"
-                  : "text-gray-700 hover:bg-gray-100 cursor-pointer"
-              }`}
-              title="First Page"
-            >
-              <ChevronsLeft className="w-4 h-4" />
-            </button>
-
+          <div className="flex items-center gap-1 flex-wrap justify-center">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className={`p-2 rounded-md ${
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
                 currentPage === 1
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-700 hover:bg-gray-100 cursor-pointer"
               }`}
               title="Previous Page"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <span className="flex items-center gap-1">
+                <ChevronLeft className="w-4 h-4" />
+                Prev
+              </span>
             </button>
 
             {getPageNumbers().map((pageNum, index) => (
               <button
-                key={index}
-                onClick={() => handlePageChange(pageNum)}
-                className={`min-w-[40px] h-10 rounded-md text-sm font-medium ${
+                key={`${pageNum}-${index}`}
+                onClick={() => pageNum !== "..." && handlePageChange(pageNum)}
+                disabled={pageNum === "..."}
+                className={`min-w-[40px] h-10 rounded-md px-3 text-sm font-medium ${
                   pageNum === currentPage
                     ? "bg-red-500 text-white"
                     : pageNum === "..."
                     ? "text-gray-400 cursor-default"
                     : "text-gray-700 hover:bg-gray-100 cursor-pointer"
                 }`}
-                disabled={pageNum === "..."}
               >
                 {pageNum}
               </button>
@@ -660,27 +637,17 @@ const Products = () => {
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className={`p-2 rounded-md ${
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
                 currentPage === totalPages
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-700 hover:bg-gray-100 cursor-pointer"
               }`}
               title="Next Page"
             >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => handlePageChange(totalPages)}
-              disabled={currentPage === totalPages}
-              className={`p-2 rounded-md ${
-                currentPage === totalPages
-                  ? "text-gray-400 cursor-not-allowed"
-                  : "text-gray-700 hover:bg-gray-100 cursor-pointer"
-              }`}
-              title="Last Page"
-            >
-              <ChevronsRight className="w-4 h-4" />
+              <span className="flex items-center gap-1">
+                Next
+                <ChevronRight className="w-4 h-4" />
+              </span>
             </button>
           </div>
 
@@ -1001,17 +968,6 @@ const Products = () => {
         </div>
       )}
 
-      <style>{`
-        .tab-highlight {
-          box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
-          transition: box-shadow 0.2s ease;
-        }
-        input:focus, textarea:focus {
-          outline: none;
-          border-color: #ef4444;
-          box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5);
-        }
-      `}</style>
     </div>
   );
 };

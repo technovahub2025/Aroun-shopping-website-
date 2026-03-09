@@ -1,27 +1,3 @@
-// import apiClient from "./apiClient";
-
-// // Base endpoint for products
-// const BASE_URL = "/products";
-
-// const productApi = {
-//   // Get all products
-//   getAll: () => apiClient.get(BASE_URL),
-
-//   // Get single product by ID
-//   getById: (id) => apiClient.get(`${BASE_URL}/${id}`),
-
-//   // Create new product
-//   create: (productData) => apiClient.post(BASE_URL, productData),
-
-//   // Update product by ID
-//   update: (id, productData) => apiClient.put(`${BASE_URL}/${id}`, productData),
-
-//   // Delete product by ID
-//   remove: (id) => apiClient.delete(`${BASE_URL}/${id}`),
-// };
-
-// export default productApi;
-
 import apiClient from "./apiClient";
 
 // Base endpoint for products
@@ -29,6 +5,7 @@ const BASE_URL = "/products";
 const CACHE_PREFIX = "product_api_cache:";
 const CACHE_TTL_MS = 60 * 1000;
 const inMemoryCache = new Map();
+const pendingRequests = new Map();
 
 const buildCacheKey = (query) => {
   if (!query) return `${CACHE_PREFIX}all`;
@@ -88,19 +65,33 @@ const productApi = {
       }
     }
 
-    let response;
-
-    if (!query) {
-      response = await apiClient.get(BASE_URL);
-    } else if (typeof query === "string") {
-      const normalizedQuery = query.startsWith("?") ? query : `?${query}`;
-      response = await apiClient.get(`${BASE_URL}${normalizedQuery}`);
-    } else {
-      response = await apiClient.get(BASE_URL, { params: query });
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey);
     }
 
-    writeCache(cacheKey, response.data);
-    return response;
+    const request = (async () => {
+      let response;
+
+      if (!query) {
+        response = await apiClient.get(BASE_URL);
+      } else if (typeof query === "string") {
+        const normalizedQuery = query.startsWith("?") ? query : `?${query}`;
+        response = await apiClient.get(`${BASE_URL}${normalizedQuery}`);
+      } else {
+        response = await apiClient.get(BASE_URL, { params: query });
+      }
+
+      writeCache(cacheKey, response.data);
+      return response;
+    })();
+
+    pendingRequests.set(cacheKey, request);
+
+    try {
+      return await request;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
   },
 
   // Get single product by ID
@@ -165,6 +156,8 @@ const productApi = {
   },
 
   prefetchAll: () => productApi.getAll(undefined, { forceRefresh: false }),
+
+  getCachedAll: (query) => readCache(buildCacheKey(query)),
 
   clearCache: clearProductCache,
 };
