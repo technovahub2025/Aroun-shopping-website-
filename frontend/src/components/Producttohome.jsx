@@ -12,13 +12,19 @@ const Producttohome = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState(""); // category filter
 
+  const normalizeProducts = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.products)) return payload.products;
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+  };
+
   // Fetch all products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const response = await productApi.getAll();
-        setProducts(response.data || []);
-        //setProducts(Array.isArray(response.data?.data) ? response.data.data : []);
+        setProducts(normalizeProducts(response?.data));
 
       } catch (error) {
         console.error("Failed to fetch products:", error);
@@ -42,11 +48,11 @@ const Producttohome = () => {
   };
 
   // Unique category list (for dropdown)
-  const categories = [...new Set(products.map((p) => p.category).filter(Boolean))];
+  const categories = [...new Set(products.map((p) => p?.category).filter(Boolean))];
 
   // Filtered products
   const filteredProducts = filter
-    ? products.filter((p) => p.category === filter)
+    ? products.filter((p) => p?.category === filter)
     : products;
 
   // Visible subset
