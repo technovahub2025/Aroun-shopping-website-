@@ -9,7 +9,7 @@ const AdminRoutes = () => {
     <Routes>
       {/* <Route path="/" element={<DashboardHome />} /> */}
       <Route path="/" element={<Products />} />
-      <Route path="deleted-products" element={<DeletedProducts/>}/>
+      <Route path="deleted-products" element={<DeletedProducts />} />
       {/* <Route path="users" element={<div>Users Management (Coming Soon)</div>} />
       <Route path="settings" element={<div>Settings (Coming Soon)</div>} /> */}
     </Routes>

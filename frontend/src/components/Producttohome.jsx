@@ -1,3 +1,6 @@
+
+
+
 import React, { useEffect, useState } from "react";
 import productApi from "../../api/productApi";
 import { Link } from "react-router-dom";
@@ -24,8 +27,20 @@ const Producttohome = () => {
     const fetchProducts = async () => {
       try {
         const response = await productApi.getAll();
-        setProducts(normalizeProducts(response?.data));
+        let data = response.data;
 
+        // Normalize response shape
+        if (!Array.isArray(data)) {
+          data = data?.products || [];
+        }
+
+        if (!Array.isArray(data)) {
+          console.error("Expected products to be an array, got:", data);
+          setProducts([]);
+          return;
+        }
+
+        setProducts(data);
       } catch (error) {
         console.error("Failed to fetch products:", error);
       } finally {
@@ -48,7 +63,9 @@ const Producttohome = () => {
   };
 
   // Unique category list (for dropdown)
-  const categories = [...new Set(products.map((p) => p?.category).filter(Boolean))];
+  const categories = Array.isArray(products)
+    ? [...new Set(products.map((p) => p.category).filter(Boolean))]
+    : [];
 
   // Filtered products
   const filteredProducts = filter
@@ -56,7 +73,9 @@ const Producttohome = () => {
     : products;
 
   // Visible subset
-  const visibleProducts = filteredProducts.slice(0, visibleCount);
+  const visibleProducts = Array.isArray(filteredProducts)
+    ? filteredProducts.slice(0, visibleCount)
+    : [];
 
   // Load more handler
   const handleLoadMore = () => {
@@ -77,7 +96,7 @@ const Producttohome = () => {
     );
 
   // No products case
-  if (products.length === 0)
+  if (!Array.isArray(products) || products.length === 0)
     return (
       <div className="flex justify-center items-center h-64">
         <p className="text-gray-500 text-lg">No products available right now.</p>
@@ -85,7 +104,7 @@ const Producttohome = () => {
     );
 
   return (
-    <div className="bg-gray-50  min-h-screen py-10 px-4 sm:px-6 md:px-10 lg:px-16">
+    <div className="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 md:px-10 lg:px-16">
       <Title text="Explore Our Latest Products" />
 
       {/* Category Filter */}
@@ -110,11 +129,11 @@ const Producttohome = () => {
       )}
 
       {/* Product Grid */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 ">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
         {visibleProducts.map((product) => (
           <div
             key={product._id}
-            className="bg-white rounded-2xl mt-4 md:p-[10px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 p-3 flex flex-col"
+            className="bg-white rounded-2xl mt-4 md:p-[10px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
           >
             <Link to={`/products/${product._id}`}>
               <img
@@ -153,32 +172,25 @@ const Producttohome = () => {
                 {/* Price Section */}
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    {/* Selling Price */}
                     <span className="text-lg font-bold text-red-600">
                       ₹{product.price}
                     </span>
-
-                    {/* MRP (Strike) */}
                     {product.mrp && (
                       <span className="text-sm text-gray-500 line-through">
                         ₹{product.mrp}
                       </span>
                     )}
                   </div>
-
-                  {/* Discount Badge */}
                   {product.mrp && product.price && (
                     <span className="text-xs text-green-600 font-semibold">
                       {Math.round(
-                        Math.abs((product.mrp - product.price) / product.mrp) *
-                          100
+                        Math.abs((product.mrp - product.price) / product.mrp) * 100
                       )}
                       % OFF
                     </span>
                   )}
                 </div>
 
-                {/* View Button */}
                 <Link
                   to={`/products/${product._id}`}
                   className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-600 transition cursor-pointer"

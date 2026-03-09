@@ -9,7 +9,7 @@ import { setUser } from "../redux/userSlice";
 const Auth = ({ toggleLoginModal }) => {
   const [step, setStep] = useState("phone");
   const [phone, setPhone] = useState("+91");
-  const [otp, setOtp] = useState(["", "", "", ""]); // ✅ 4 digits
+  const [otp, setOtp] = useState(["", "", "", ""]); 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [timer, setTimer] = useState(0);
@@ -177,7 +177,7 @@ const Auth = ({ toggleLoginModal }) => {
             <button
               onClick={() => {
                 setStep("phone");
-                setOtp(["", "", "", ""]); // Reset
+                setOtp(["", "", "", ""]); 
                 setMessage("");
               }}
               className="text-red-500 text-sm mt-3 underline text-center"

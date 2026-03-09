@@ -47,7 +47,7 @@ const LayoutDashboard = () => {
           </Link>
 
           <Link
-            to="deleted-products"
+            to="/admin/deleted-products"
             className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200"
           >
             <Trash2 className="w-5 h-5" />

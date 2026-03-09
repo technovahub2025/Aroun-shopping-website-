@@ -9,6 +9,15 @@ const Orders = () => {
   const user = useSelector((s) => s.user?.user);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const formatPrice = (value) =>
+    new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(value || 0);
 
   const fetchOrders = async () => {
     try {
@@ -25,8 +34,11 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [orders.length]);
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
@@ -38,6 +50,12 @@ const Orders = () => {
       toast.error('Failed to update order');
     }
   };
+
+  const totalPages = Math.ceil(orders.length / itemsPerPage);
+  const currentOrders = orders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -58,7 +76,7 @@ const Orders = () => {
       <h1 className="text-2xl font-bold mb-6">Orders</h1>
 
       <div className="space-y-6">
-        {orders.map((order) => (
+        {currentOrders.map((order) => (
           <div key={order._id} className="bg-white rounded-lg shadow p-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -77,7 +95,7 @@ const Orders = () => {
               <div className="flex items-center gap-4">
                 <div className="text-right text-sm text-gray-700">
                   <div>Total</div>
-                  <div className="text-xl font-semibold">₹{(order.totalPrice || 0).toLocaleString()}</div>
+                  <div className="text-xl font-semibold">{formatPrice(order.totalPrice)}</div>
                 </div>
                 {user?.role === 'admin' && (
                   <div>
@@ -101,7 +119,9 @@ const Orders = () => {
                       <div className="font-medium">{it.name}</div>
                       <div className="text-sm text-gray-500">Qty: {it.quantity}</div>
                     </div>
-                    <div className="text-right font-medium">₹{((it.price||0) * (it.quantity||1)).toLocaleString()}</div>
+                    <div className="text-right font-medium">
+                      {formatPrice((it.price || 0) * (it.quantity || 1))}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -118,6 +138,73 @@ const Orders = () => {
           </div>
         ))}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-10 flex-wrap">
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+          >
+            {"<<"}
+          </button>
+
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+          >
+            {"<"}
+          </button>
+
+          {Array.from({ length: 4 }, (_, i) => currentPage + i)
+            .filter((page) => page <= totalPages)
+            .map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-4 py-2 rounded-lg ${
+                  currentPage === page
+                    ? "bg-red-500 text-white"
+                    : "bg-white border hover:bg-gray-100"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+          {currentPage + 4 < totalPages && (
+            <span className="px-2 text-gray-500">...</span>
+          )}
+
+          {currentPage + 4 < totalPages && (
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              className="px-4 py-2 border rounded hover:bg-gray-100"
+            >
+              {totalPages}
+            </button>
+          )}
+
+          <button
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+          >
+            {">"}
+          </button>
+
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"
+          >
+            {">>"}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
