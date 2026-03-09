@@ -1,5 +1,10 @@
 import React, { Suspense } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import apiClient from "../api/apiClient";
+import productApi from "../api/productApi";
+import orderApi from "../api/orderApi";
+import { store } from "./app/store";
+import { setUser } from "./redux/userSlice";
 
 // Components
 import Navbar from "./Components/Navbar";
@@ -105,21 +110,17 @@ const AppContent = () => {
 const App = () => {
   // Persist auth check on app load
   React.useEffect(() => {
+    productApi.prefetchAll().catch((error) => {
+      console.error("Initial product prefetch failed:", error);
+    });
+
     const token = localStorage.getItem('token');
     if (token) {
-      // This will trigger the auth check in ProtectedRoute
-      // when the app first loads
       const checkAuth = async () => {
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/me`, {
-            credentials: 'include',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          if (!response.ok) {
-            localStorage.removeItem('token');
-          }
+          const { data } = await apiClient.get("/auth/me");
+          store.dispatch(setUser(data.user));
+          await orderApi.prefetchForRole(data.user?.role);
         } catch (error) {
           console.error('Initial auth check failed:', error);
           localStorage.removeItem('token');
@@ -139,3 +140,4 @@ const App = () => {
 };
 
 export default App;
+

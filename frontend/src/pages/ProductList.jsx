@@ -1,8 +1,8 @@
+
 import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
-import { useSelector } from "react-redux";
-import { toast } from "react-toastify";
+import apiClient from "../../api/apiClient";
 import {
   FaStar,
   FaStarHalfAlt,
@@ -12,8 +12,11 @@ import {
   FaTrash,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import { useDispatch, useSelector } from "react-redux";
+import { setUser } from "../redux/userSlice";
 
 const ProductList = () => {
+  const dispatch = useDispatch();
   const user = useSelector((state) => state.user.user);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +31,7 @@ const ProductList = () => {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [searchParams] = useSearchParams();
 
-  const itemsPerPage = 50;
+  const itemsPerPage = 60;
   const sortOptions = [
     "Relevant",
     "Price: Low to High",
@@ -37,8 +40,23 @@ const ProductList = () => {
   ];
 
   const selectedCategory = searchParams.get("category");
+  const isAdmin = user?.role === "admin";
 
-  // ✅ Fetch products
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const { data } = await apiClient.get("/auth/me");
+        dispatch(setUser(data.user));
+      } catch {
+        // Ignore auth errors here. Non-admin users should still access product listing.
+      }
+    };
+
+    if (!user) {
+      fetchUser();
+    }
+  }, [dispatch, user]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -47,7 +65,6 @@ const ProductList = () => {
 
         setProducts(data);
 
-        // ✅ since category is a single string
         setAvailableCategories(
           Array.from(new Set(data.map((p) => p.category).filter(Boolean)))
         );
@@ -66,14 +83,12 @@ const ProductList = () => {
     fetchData();
   }, [selectedCategory]);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // ✅ Filter logic
   const handleCategoryChange = (cat) => {
     setCategoryFilters((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
@@ -88,44 +103,24 @@ const ProductList = () => {
     setCurrentPage(1);
   };
 
-  const handleDelete = async (e, productId) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!window.confirm("Move this product to deleted list?")) return;
-
-    try {
-      await productApi.remove(productId);
-      setProducts((prev) => prev.filter((p) => p._id !== productId));
-      toast.success("Product moved to deleted list");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete product");
-    }
-  };
-
-  const handleDeleteCategory = async (e, category) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (
-      !window.confirm(
-        `Delete category "${category}"? All products in this category will move to deleted list.`
-      )
-    ) {
+  const handleCategoryDelete = async (category) => {
+    if (!category) return;
+    if (!window.confirm(`Delete all products in "${category}" category?`)) {
       return;
     }
 
     try {
       await productApi.deleteCategory(category);
+
       setProducts((prev) => prev.filter((p) => p.category !== category));
-      setAvailableCategories((prev) => prev.filter((c) => c !== category));
-      setCategoryFilters((prev) => prev.filter((c) => c !== category));
-      toast.success(`Category "${category}" deleted`);
+      setAvailableCategories((prev) => prev.filter((cat) => cat !== category));
+      setCategoryFilters((prev) => prev.filter((cat) => cat !== category));
+      setCurrentPage(1);
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete category");
+      setError(err.response?.data?.message || "Failed to delete category");
     }
   };
-  // ✅ Filtering + sorting
+
   const filteredAndSortedProducts = useMemo(() => {
     let temp = [...products];
 
@@ -163,6 +158,41 @@ const ProductList = () => {
   );
   const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
 
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+      return pageNumbers;
+    }
+
+    let startPage = Math.max(1, currentPage - 1);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    if (currentPage <= 2) {
+      startPage = 1;
+      endPage = 4;
+    }
+
+    if (currentPage >= totalPages - 1) {
+      startPage = totalPages - 3;
+      endPage = totalPages;
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    if (endPage < totalPages) {
+      pageNumbers.push("...");
+    }
+
+    return pageNumbers;
+  };
+
   const renderStars = (rating = 0) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
@@ -180,6 +210,7 @@ const ProductList = () => {
         Loading products...
       </div>
     );
+
   if (error)
     return <p className="text-center text-red-500 py-20">Error: {error}</p>;
 
@@ -191,7 +222,6 @@ const ProductList = () => {
         </h1>
       </div>
 
-      {/* Filter + Sort */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <button
@@ -216,7 +246,6 @@ const ProductList = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        {/* Filters */}
         <AnimatePresence>
           {showFilters && !isDesktop && (
             <motion.div
@@ -263,7 +292,6 @@ const ProductList = () => {
                 </h2>
               )}
 
-              {/* Category Filter */}
               {availableCategories.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-semibold mb-2 text-gray-700">Category</h3>
@@ -281,10 +309,11 @@ const ProductList = () => {
                         />
                         <span className="ml-2">{cat}</span>
                       </label>
-                      {user?.role === "admin" && (
+                      {isAdmin && (
                         <button
-                          onClick={(e) => handleDeleteCategory(e, cat)}
-                          className="ml-2 p-1 rounded text-red-500 hover:bg-red-50 cursor-pointer"
+                          type="button"
+                          onClick={() => handleCategoryDelete(cat)}
+                          className="ml-2 text-red-500 hover:text-red-600"
                           title={`Delete ${cat} category`}
                         >
                           <FaTrash size={12} />
@@ -295,7 +324,6 @@ const ProductList = () => {
                 </div>
               )}
 
-              {/* Type Filter */}
               {availableTypes.length > 0 && (
                 <div>
                   <h3 className="font-semibold mb-2 text-gray-700">Type</h3>
@@ -319,7 +347,6 @@ const ProductList = () => {
           )}
         </AnimatePresence>
 
-        {/* Product Grid */}
         <main className="md:col-span-9">
           {filteredAndSortedProducts.length === 0 ? (
             <p className="text-center text-gray-500 py-10">No products found.</p>
@@ -329,19 +356,8 @@ const ProductList = () => {
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
-                  className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                  className="group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
                 >
-                  {user?.role === "admin" && (
-                    <div className="absolute z-10 p-2">
-                      <button
-                        onClick={(e) => handleDelete(e, product._id)}
-                        className="w-8 h-8 rounded-full bg-white/90 text-red-600 shadow hover:bg-red-50 cursor-pointer flex items-center justify-center"
-                        title="Delete product"
-                      >
-                        <FaTrash size={14} />
-                      </button>
-                    </div>
-                  )}
                   <div className="relative bg-gray-50 flex items-center justify-center aspect-[4/3] overflow-hidden">
                     <img
                       src={product.images?.[0] || "/placeholder.png"}
@@ -377,22 +393,54 @@ const ProductList = () => {
             </div>
           )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-10">
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => setCurrentPage(i + 1)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                    currentPage === i + 1
-                      ? "bg-red-500 text-white shadow-md"
-                      : "bg-gray-200 hover:bg-red-400 hover:text-white"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-3 mt-10">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-5 py-2 rounded-lg font-medium transition-all ${
+                  currentPage === 1
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-200 text-gray-700 hover:bg-red-400 hover:text-white"
+                }`}
+              >
+                Prev
+              </button>
+
+              <div className="flex items-center gap-2 flex-wrap justify-center">
+                {getPageNumbers().map((pageNum, index) => (
+                  <button
+                    key={`${pageNum}-${index}`}
+                    onClick={() =>
+                      pageNum !== "..." && setCurrentPage(pageNum)
+                    }
+                    disabled={pageNum === "..."}
+                    className={`min-w-[40px] h-10 rounded-lg px-3 text-sm font-medium transition-all ${
+                      pageNum === currentPage
+                        ? "bg-red-500 text-white shadow-md"
+                        : pageNum === "..."
+                        ? "text-gray-400 cursor-default"
+                        : "bg-gray-200 text-gray-700 hover:bg-red-400 hover:text-white"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className={`px-5 py-2 rounded-lg font-medium transition-all ${
+                  currentPage === totalPages
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-red-500 text-white hover:bg-red-600"
+                }`}
+              >
+                Next
+              </button>
             </div>
           )}
         </main>
