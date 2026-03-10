@@ -158,40 +158,38 @@ const ProductList = () => {
   );
   const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
 
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
+const getPageNumbers = () => {
+  const pages = [];
 
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-      return pageNumbers;
+  if (totalPages <= 7) {
+    // if pages are small show all
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
     }
+    return pages;
+  }
 
-    let startPage = Math.max(1, currentPage - 1);
-    let endPage = Math.min(totalPages, currentPage + 2);
+  pages.push(1);
 
-    if (currentPage <= 2) {
-      startPage = 1;
-      endPage = 4;
-    }
+  if (currentPage > 4) {
+    pages.push("...");
+  }
 
-    if (currentPage >= totalPages - 1) {
-      startPage = totalPages - 3;
-      endPage = totalPages;
-    }
+  let start = Math.max(2, currentPage - 1);
+  let end = Math.min(totalPages - 1, currentPage + 1);
 
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
 
-    if (endPage < totalPages) {
-      pageNumbers.push("...");
-    }
+  if (currentPage < totalPages - 3) {
+    pages.push("...");
+  }
 
-    return pageNumbers;
-  };
+  pages.push(totalPages);
+
+  return pages;
+};
 
   const renderStars = (rating = 0) => {
     const stars = [];

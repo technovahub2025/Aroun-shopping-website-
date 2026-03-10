@@ -3,7 +3,7 @@ import apiClient from "./apiClient";
 // Base endpoint for products
 const BASE_URL = "/products";
 const CACHE_PREFIX = "product_api_cache:";
-const CACHE_TTL_MS = 60 * 1000;
+const CACHE_TTL_MS = 3 * 1000;
 const inMemoryCache = new Map();
 const pendingRequests = new Map();
 

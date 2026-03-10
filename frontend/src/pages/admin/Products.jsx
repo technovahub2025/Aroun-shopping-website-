@@ -386,40 +386,54 @@ const Products = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
 
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxVisiblePages = 5;
+const getPageNumbers = () => {
+  const pages = [];
 
-    if (totalPages <= maxVisiblePages) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-      return pageNumbers;
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i);
     }
+    return pages;
+  }
 
-    let startPage = Math.max(1, currentPage - 1);
-    let endPage = Math.min(totalPages, currentPage + 2);
+  // Always show first page
+  pages.push(1);
 
-    if (currentPage <= 2) {
-      startPage = 1;
-      endPage = 4;
-    }
+  // LEFT DOTS
+  if (currentPage > 3) {
+    pages.push("...");
+  }
 
-    if (currentPage >= totalPages - 1) {
-      startPage = totalPages - 3;
-      endPage = totalPages;
-    }
+  // MIDDLE PAGES
+  let start = Math.max(2, currentPage - 1);
+  let end = Math.min(totalPages - 1, currentPage + 1);
 
-    for (let i = startPage; i <= endPage; i++) {
-      pageNumbers.push(i);
-    }
+  // Fix when near start
+  if (currentPage <= 3) {
+    start = 2;
+    end = 4;
+  }
 
-    if (endPage < totalPages) {
-      pageNumbers.push("...");
-    }
+  // Fix when near end
+  if (currentPage >= totalPages - 2) {
+    start = totalPages - 3;
+    end = totalPages - 1;
+  }
 
-    return pageNumbers;
-  };
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  // RIGHT DOTS
+  if (currentPage < totalPages - 2) {
+    pages.push("...");
+  }
+
+  // Always show last page
+  pages.push(totalPages);
+
+  return pages;
+};
 
   // Handle page change
   const handlePageChange = (pageNumber) => {
