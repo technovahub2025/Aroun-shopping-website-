@@ -82,6 +82,8 @@ const Products = () => {
   };
 
   useEffect(() => {
+    // Warm up deleted list so DeletedProducts.jsx opens instantly.
+    productApi.prefetchDeleted?.();
     fetchProducts({ forceRefresh: cachedProducts.length > 0 });
   }, []);
 
@@ -342,7 +344,8 @@ const Products = () => {
       return;
 
     try {
-      await productApi.remove(id);
+      const product = products.find((p) => p?._id === id);
+      await productApi.remove(id, { product });
       toast.success("Product deleted");
 
       // Remove from local state

@@ -4,14 +4,18 @@ import { toast } from "react-toastify";
 import productApi from "../../../api/productApi";
 
 const DeletedProducts = () => {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cachedDeleted = productApi.getCachedDeleted?.() || [];
+  const initialProducts = cachedDeleted.filter((p) => p?.isDeleted === true);
+  const [products, setProducts] = useState(initialProducts);
+  const [loading, setLoading] = useState(initialProducts.length === 0);
   const [restoringId, setRestoringId] = useState(null);
 
-  const fetchDeletedProducts = async () => {
+  const fetchDeletedProducts = async ({ forceRefresh = false, showSpinner = false } = {}) => {
     try {
-      setLoading(true);
-      const res = await productApi.getDeleted();
+      if (showSpinner) {
+        setLoading(true);
+      }
+      const res = await productApi.getDeleted({ forceRefresh });
       setProducts((res.data || []).filter((p) => p?.isDeleted === true));
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to fetch deleted products");
@@ -21,13 +25,21 @@ const DeletedProducts = () => {
   };
 
   useEffect(() => {
-    fetchDeletedProducts();
+    // Also warm up Products.jsx so navigation back is instant.
+    productApi.prefetchAll?.();
+    fetchDeletedProducts({
+      forceRefresh: initialProducts.length > 0,
+      showSpinner: initialProducts.length === 0,
+    });
   }, []);
 
-  const handleRestore = async (id) => {
+  const handleRestore = async (product) => {
+    const id = product?._id;
+    if (!id) return;
+
     try {
       setRestoringId(id);
-      await productApi.restore(id);
+      await productApi.restore(id, { product });
       setProducts((prev) => prev.filter((p) => p._id !== id));
       toast.success("Product restored successfully");
     } catch (err) {
@@ -93,7 +105,7 @@ const DeletedProducts = () => {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button
-                      onClick={() => handleRestore(p._id)}
+                      onClick={() => handleRestore(p)}
                       disabled={restoringId === p._id}
                       className={`p-2 rounded-md cursor-pointer ${
                         restoringId === p._id
