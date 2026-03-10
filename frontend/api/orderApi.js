@@ -3,7 +3,7 @@ import apiClient from './apiClient';
 
 const BASE = '/orders';
 const CACHE_PREFIX = 'order_api_cache:';
-const CACHE_TTL_MS = 3 * 1000;
+const CACHE_TTL_MS = 30 * 1000;
 const inMemoryCache = new Map();
 
 const readCache = (key) => {
