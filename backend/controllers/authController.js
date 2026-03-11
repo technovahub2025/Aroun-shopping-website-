@@ -1,15 +1,15 @@
 const crypto = require('crypto');
 
-// Forgot Password - Request Reset
+// Forgot Password - Request Reset (phone only)
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email, phone } = req.body;
-    if (!email && !phone) {
-      return res.status(400).json({ message: 'Email or phone is required' });
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
     }
 
-    // Find user by email or phone
-    const user = await User.findOne(email ? { email } : { phone });
+    // Find user by phone
+    const user = await User.findOne({ phone });
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -21,16 +21,8 @@ exports.forgotPassword = async (req, res) => {
     user.resetPasswordExpire = resetPasswordExpire;
     await user.save();
 
-    // Send token via SMS (or email if you have email logic)
-    if (user.phone) {
-      // You can use your Twilio sendOTP or a custom SMS here
-      // For now, just simulate sending
-      // await sendOTP(user.phone); // Or send resetToken via SMS
-      // For demo, just return token in response (REMOVE in production)
-      return res.json({ message: 'Reset token sent via SMS', resetToken });
-    }
-    // If you have email logic, send email here
-    return res.json({ message: 'Reset token generated', resetToken });
+    // For demo, just return token in response (REMOVE in production)
+    return res.json({ message: 'Reset token sent via SMS', resetToken });
   } catch (err) {
     console.error('Forgot Password Error:', err.message || err);
     res.status(500).json({ message: 'Server error' });
