@@ -1,3 +1,72 @@
+const crypto = require('crypto');
+
+// Forgot Password - Request Reset
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email, phone } = req.body;
+    if (!email && !phone) {
+      return res.status(400).json({ message: 'Email or phone is required' });
+    }
+
+    // Find user by email or phone
+    const user = await User.findOne(email ? { email } : { phone });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetPasswordExpire = Date.now() + 1000 * 60 * 15; // 15 minutes
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpire = resetPasswordExpire;
+    await user.save();
+
+    // Send token via SMS (or email if you have email logic)
+    if (user.phone) {
+      // You can use your Twilio sendOTP or a custom SMS here
+      // For now, just simulate sending
+      // await sendOTP(user.phone); // Or send resetToken via SMS
+      // For demo, just return token in response (REMOVE in production)
+      return res.json({ message: 'Reset token sent via SMS', resetToken });
+    }
+    // If you have email logic, send email here
+    return res.json({ message: 'Reset token generated', resetToken });
+  } catch (err) {
+    console.error('Forgot Password Error:', err.message || err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Reset Password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: 'Token and new password required' });
+    }
+
+    // Find user by token and check expiry
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.json({ message: 'Password reset successful' });
+  } catch (err) {
+    console.error('Reset Password Error:', err.message || err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 const User = require('../models/User');
 const { sendOTP, verifyOTP } = require('../utils/twilio');
 const generateToken = require('../utils/jwt');

@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   otp: { type: String },
   otpExpire: { type: Date },
+  resetPasswordToken: { type: String },
+  resetPasswordExpire: { type: Date },
   address: {
     street: { type: String },
     city: { type: String },
