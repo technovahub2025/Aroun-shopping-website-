@@ -130,3 +130,4 @@ const CategoriesCarousel = () => {
 };
 
 export default CategoriesCarousel;
+
