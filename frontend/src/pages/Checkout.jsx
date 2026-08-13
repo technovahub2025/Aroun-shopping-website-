@@ -9,6 +9,14 @@ import { useNavigate } from "react-router-dom";
 const RAZORPAY_SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
 let razorpayScriptPromise = null;
 
+const formatINR = (value) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
 const loadRazorpayScript = () => {
   if (typeof window === "undefined") return Promise.resolve(false);
   if (window.Razorpay) return Promise.resolve(true);
@@ -103,7 +111,8 @@ const Checkout = () => {
   };
 
   const startRazorpayFlow = async () => {
-    const amount = Math.round(subtotal * 100);
+    // Razorpay expects the smallest currency unit, so convert rupees to paise here.
+    const amountInPaise = Math.round(subtotal * 100);
     const receipt = `rcpt_${Date.now()}`;
     const notes = {
       customer_name: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -117,7 +126,7 @@ const Checkout = () => {
     };
 
     const orderResponse = await paymentApi.createOrder({
-      amount,
+      amount: amountInPaise,
       currency: "INR",
       receipt,
       notes,
@@ -142,7 +151,7 @@ const Checkout = () => {
     return new Promise((resolve, reject) => {
       const options = {
         key: keyId,
-        amount: amount.toString(),
+        amount: amountInPaise.toString(),
         currency: "INR",
         name: "Aroun Stores",
         description: "Order payment",
@@ -399,7 +408,7 @@ const Checkout = () => {
                     <p className="text-gray-600 text-sm">
                       Quantity: {item.quantity}
                     </p>
-                    <p className="text-red-600">₹ {(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="text-red-600">₹ {(item.price * item.quantity).toFixed(2)}</p>
                   </div>
                 </div>
               ))}
@@ -408,16 +417,16 @@ const Checkout = () => {
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between py-2">
                 <span className="text-gray-600">SubTotal</span>
-                <span className="font-medium">₹ {subtotal.toFixed(2)}</span>
+                <span className="font-medium">{formatINR(subtotal)}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-600">Shipping Fees</span>
-                <span className="font-medium">₹ {shippingFees.toFixed(2)}</span>
+                <span className="font-medium">{formatINR(shippingFees)}</span>
               </div>
               <div className="border-t pt-2 mt-2">
                 <div className="flex justify-between">
                   <span className="text-gray-800 font-semibold">Total</span>
-                  <span className="font-semibold">₹ {total.toFixed(2)}</span>
+                  <span className="font-semibold">{formatINR(total)}</span>
                 </div>
               </div>
             </div>
