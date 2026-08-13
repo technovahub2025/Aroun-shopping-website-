@@ -604,7 +604,7 @@ const Products = () => {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-4 mb-6">
+      <div className="space-y-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
