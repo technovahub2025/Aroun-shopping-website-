@@ -11,11 +11,131 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  CheckCircle2,
+  AlertTriangle,
+  RefreshCcw,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useDropzone } from "react-dropzone";
 import { ReactSortable } from "react-sortablejs";
+import * as XLSX from "xlsx";
 import productApi from "../../../api/productApi";
+
+const normalizeHeader = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+
+const readRowValue = (row, keys) => {
+  const normalized = Object.fromEntries(
+    Object.entries(row || {}).map(([key, value]) => [normalizeHeader(key), value])
+  );
+
+  for (const key of keys) {
+    const value = normalized[normalizeHeader(key)];
+    if (value !== undefined && value !== null && value !== "") {
+      return value;
+    }
+  }
+
+  return "";
+};
+
+const parseNumber = (value, fallback = null) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number(String(value).replace(/,/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parseImageList = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => parseImageList(entry));
+  }
+
+  return String(value)
+    .split(/[\n,|;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const normalizeExcelRow = (row, index) => {
+  const title = String(readRowValue(row, ["title", "producttitle", "name"])).trim();
+  const description = String(
+    readRowValue(row, ["description", "details", "about"])
+  ).trim();
+  const category = String(
+    readRowValue(row, ["category", "cat", "categoryname"])
+  ).trim();
+  const type = String(readRowValue(row, ["type", "subtype", "subcategory"])).trim();
+
+  const price = parseNumber(
+    readRowValue(row, ["price", "saleprice", "sellingprice"]),
+    null
+  );
+  const mrp = parseNumber(
+    readRowValue(row, ["mrp", "originalprice", "regularprice"]),
+    null
+  );
+  const stock = parseNumber(readRowValue(row, ["stock", "quantity", "qty"]), null);
+  const rating = parseNumber(readRowValue(row, ["rating", "stars"]), 0);
+  const discount = parseNumber(
+    readRowValue(row, ["discount", "discountpercent", "offer"]),
+    0
+  );
+  const images = parseImageList(
+    readRowValue(row, ["images", "image", "imageurl", "imageurls", "url"])
+  );
+
+  const issues = [];
+
+  if (!title) issues.push("Missing title");
+  if (!category) issues.push("Missing category");
+  if (price === null) issues.push("Missing price");
+  if (stock === null) issues.push("Missing stock");
+  if (mrp === null) issues.push("Missing MRP");
+
+  return {
+    rowNumber: index + 2,
+    title,
+    description,
+    category,
+    type,
+    price,
+    mrp,
+    stock,
+    rating,
+    discount,
+    images,
+    issues,
+    isValid: issues.length === 0,
+  };
+};
+
+const downloadTemplate = () => {
+  const workbook = XLSX.utils.book_new();
+  const worksheet = XLSX.utils.json_to_sheet([
+    {
+      title: "Sample Product",
+      description: "Short product description",
+      category: "Demo Category",
+      type: "Demo Type",
+      price: 499,
+      mrp: 699,
+      stock: 25,
+      rating: 4.5,
+      discount: 10,
+      imageUrls: "https://example.com/product-image.jpg",
+    },
+  ]);
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+  XLSX.writeFile(workbook, "product-import-template.xlsx");
+};
 
 const fieldOrder = [
   "title",
@@ -36,6 +156,10 @@ const Products = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [importRows, setImportRows] = useState([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [parsingExcel, setParsingExcel] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -58,6 +182,7 @@ const Products = () => {
   const mrpRef = useRef(null);
   const discountRef = useRef(null);
   const ratingRef = useRef(null);
+  const importInputRef = useRef(null);
   const modalRef = useRef(null);
 
   const fieldRefs = {
@@ -281,6 +406,106 @@ const Products = () => {
     toast.info("Click inside the image area and press Ctrl+V to paste images");
   };
 
+  const handleExcelUpload = async (file) => {
+    if (!file) return;
+
+    setParsingExcel(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+
+      if (!sheetName) {
+        toast.error("Excel file does not contain any sheets");
+        return;
+      }
+
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      if (!rows.length) {
+        toast.error("No product rows found in the file");
+        return;
+      }
+
+      const normalized = rows.map((row, index) => normalizeExcelRow(row, index));
+      setImportRows(normalized);
+      setImportFileName(file.name);
+      toast.success(`Loaded ${normalized.length} row(s) from Excel`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Could not read Excel file");
+    } finally {
+      setParsingExcel(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleImportSubmit = async () => {
+    const validRows = importRows.filter((row) => row.isValid);
+    if (!validRows.length) {
+      toast.error("No valid rows to import");
+      return;
+    }
+
+    setImporting(true);
+    const createdProducts = [];
+    let failed = 0;
+
+    try {
+      for (const row of validRows) {
+        const data = new FormData();
+        data.append("title", row.title);
+        data.append("description", row.description || "");
+        data.append("category", row.category);
+        data.append("type", row.type || "");
+        data.append("price", row.price);
+        data.append("mrp", row.mrp);
+        data.append("stock", row.stock);
+        data.append("rating", row.rating ?? 0);
+        data.append("discount", row.discount ?? 0);
+        if (row.images.length > 0) {
+          data.append("imageUrls", row.images.join(","));
+        }
+
+        try {
+          const response = await productApi.create(data, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+          createdProducts.push(response.data);
+        } catch (error) {
+          failed += 1;
+          console.error("Failed to import row", row.rowNumber, error);
+        }
+      }
+
+      if (createdProducts.length > 0) {
+        setProducts((prev) => [...prev, ...createdProducts]);
+      }
+
+      setImportRows([]);
+      setImportFileName("");
+
+      if (failed > 0) {
+        toast.warn(`Imported ${createdProducts.length} row(s), ${failed} failed`);
+      } else {
+        toast.success(`Imported ${createdProducts.length} row(s) successfully`);
+      }
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleClearImport = () => {
+    setImportRows([]);
+    setImportFileName("");
+    if (importInputRef.current) {
+      importInputRef.current.value = "";
+    }
+  };
+
   const filtered = useMemo(
     () =>
       products.filter(
@@ -301,6 +526,8 @@ const Products = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  const importedValidCount = importRows.filter((row) => row.isValid).length;
+  const importedIssueCount = importRows.reduce((count, row) => count + row.issues.length, 0);
   const getPageNumbers = () => {
     const pages = [];
 
@@ -375,13 +602,193 @@ const Products = () => {
             {Math.min(indexOfLastItem, totalItems)} of {totalItems} products
           </p>
         </div>
-        <button
-          onClick={() => openModal()}
-          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer"
-        >
-          <Plus className="w-5 h-5" /> Add Product Manually
-        </button>
       </div>
+
+      <div className="grid lg:grid-cols-2 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-red-500" />
+                Excel Upload
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Upload a product sheet, preview the rows, then import the valid ones.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => importInputRef.current?.click()}
+              disabled={parsingExcel}
+              className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-black transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {parsingExcel ? (
+                <>
+                  <RefreshCcw className="w-4 h-4 animate-spin" /> Reading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" /> Choose File
+                </>
+              )}
+            </button>
+          </div>
+
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => handleExcelUpload(e.target.files?.[0])}
+          />
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={downloadTemplate}
+              className="border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> Download Format
+            </button>
+            <button
+              type="button"
+              onClick={handleImportSubmit}
+              disabled={!importRows.length || importing}
+              className={`px-4 py-2 rounded-lg text-white flex items-center gap-2 transition cursor-pointer ${
+                !importRows.length || importing
+                  ? "bg-red-300 cursor-not-allowed"
+                  : "bg-red-500 hover:bg-red-600"
+              }`}
+            >
+              {importing ? (
+                <>
+                  <RefreshCcw className="w-4 h-4 animate-spin" /> Importing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" /> Import Valid Rows
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleClearImport}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+            >
+              Clear Preview
+            </button>
+          </div>
+
+          <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg bg-gray-50 p-3">
+              <div className="text-gray-500">Rows loaded</div>
+              <div className="text-lg font-semibold text-gray-800">{importRows.length}</div>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-3">
+              <div className="text-gray-500">Valid rows</div>
+              <div className="text-lg font-semibold text-green-600">{importedValidCount}</div>
+            </div>
+            <div className="rounded-lg bg-gray-50 p-3">
+              <div className="text-gray-500">Issues</div>
+              <div className="text-lg font-semibold text-amber-600">{importedIssueCount}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 text-xs text-gray-500 leading-5">
+            Accepted columns:{" "}
+            <span className="font-medium">
+              title, description, category, type, price, mrp, stock, rating, discount, imageUrls
+            </span>
+          </div>
+
+          {importFileName && (
+            <div className="mt-3 text-sm text-gray-600">
+              Loaded file: <span className="font-medium">{importFileName}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border p-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-green-600" />
+            Manual Entry
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Use the product form for one-off product entry with images, paste support, and drag-and-drop.
+          </p>
+          <button
+            onClick={() => openModal()}
+            className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Open Manual Form
+          </button>
+        </div>
+      </div>
+
+      {importRows.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border mb-6 overflow-hidden">
+          <div className="px-4 py-3 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <h3 className="font-semibold text-gray-800">Excel Preview</h3>
+              <p className="text-sm text-gray-500">
+                Review the parsed rows before importing them.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700">
+                <CheckCircle2 className="w-4 h-4" /> {importedValidCount} valid
+              </span>
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700">
+                <AlertTriangle className="w-4 h-4" /> {importRows.length - importedValidCount} invalid
+              </span>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-[1000px] w-full text-sm text-left text-gray-700">
+              <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-3">Row</th>
+                  <th className="px-4 py-3">Title</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Price</th>
+                  <th className="px-4 py-3">MRP</th>
+                  <th className="px-4 py-3">Stock</th>
+                  <th className="px-4 py-3">Rating</th>
+                  <th className="px-4 py-3">Images</th>
+                  <th className="px-4 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importRows.map((row) => (
+                  <tr key={row.rowNumber} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-800">{row.rowNumber}</td>
+                    <td className="px-4 py-3">{row.title || "-"}</td>
+                    <td className="px-4 py-3">{row.category || "-"}</td>
+                    <td className="px-4 py-3">Rs. {row.price ?? "-"}</td>
+                    <td className="px-4 py-3">Rs. {row.mrp ?? "-"}</td>
+                    <td className="px-4 py-3">{row.stock ?? "-"}</td>
+                    <td className="px-4 py-3">{row.rating ?? "-"}</td>
+                    <td className="px-4 py-3">{row.images.length}</td>
+                    <td className="px-4 py-3">
+                      {row.isValid ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700">
+                          <CheckCircle2 className="w-4 h-4" /> Ready
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-50 text-red-700">
+                          <AlertTriangle className="w-4 h-4" />
+                          {row.issues.join(", ")}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <div className="flex items-center bg-white border rounded-lg px-3 py-2 shadow-sm w-full sm:w-80">
