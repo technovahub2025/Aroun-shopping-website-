@@ -103,7 +103,7 @@ const Checkout = () => {
   };
 
   const startRazorpayFlow = async () => {
-    const amount = Math.round(total * 100);
+    const amount = Math.round(subtotal * 100);
     const receipt = `rcpt_${Date.now()}`;
     const notes = {
       customer_name: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -113,6 +113,7 @@ const Checkout = () => {
       state: formData.state,
       pincode: formData.zipCode,
       cart_items: String(cartItems.length),
+      shipping_fee: String(shippingFees),
     };
 
     const orderResponse = await paymentApi.createOrder({
