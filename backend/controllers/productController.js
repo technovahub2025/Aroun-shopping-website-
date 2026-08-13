@@ -1,6 +1,32 @@
 const Product = require("../models/productModel");
 const cloudinary = require("../utils/cloudinary");
 
+const toNumber = (value, fallback = undefined) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  const parsed = Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parseListField = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => parseListField(item));
+  }
+
+  return String(value)
+    .split(/[\n,|;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const collectImageUrls = (body) => {
+  const existing = parseListField(body.existingImages);
+  const inlineUrls = parseListField(body.imageUrls);
+  const directImages = parseListField(body.images);
+
+  return [...existing, ...inlineUrls, ...directImages];
+};
+
 // Helper function to upload multiple images
 const uploadImages = async (files) => {
   return Promise.all(
@@ -19,25 +45,37 @@ const uploadImages = async (files) => {
   );
 };
 
-// ✅ CREATE Product
+// CREATE Product
 exports.createProduct = async (req, res) => {
   try {
-    const { title, description, price, rating, category, stock ,mrp,discount} = req.body;
-
-    // Upload images to Cloudinary
-    const imageUrls =
-      req.files && req.files.length > 0 ? await uploadImages(req.files) : [];
-
-    const product = await Product.create({
+    const {
       title,
       description,
       price,
       rating,
-      category, // single category
+      category,
+      stock,
+      mrp,
+      discount,
+      type,
+    } = req.body;
+
+    const bodyImages = collectImageUrls(req.body);
+    const uploadedImages =
+      req.files && req.files.length > 0 ? await uploadImages(req.files) : [];
+    const imageUrls = [...bodyImages, ...uploadedImages];
+
+    const product = await Product.create({
+      title,
+      description,
+      price: toNumber(price, 0),
+      rating: toNumber(rating, 0),
+      category,
       images: imageUrls,
-      mrp: mrp ? Number(mrp) : 0,
-      discount: discount ? Number(discount) : 0,
-      stock: stock ? Number(stock) : 0,
+      mrp: toNumber(mrp, 0),
+      discount: toNumber(discount, 0),
+      stock: toNumber(stock, 0),
+      type,
     });
 
     res.status(201).json(product);
@@ -47,10 +85,10 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-// ✅ READ All Products (with optional category filter)
+// READ All Products (with optional category filter)
 exports.getProducts = async (req, res) => {
   try {
-    const { category } = req.query; // optional filter
+    const { category } = req.query;
     const query = category ? { category } : {};
     const products = await Product.find(query);
     res.json(products);
@@ -60,12 +98,13 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// ✅ READ Single Product
+// READ Single Product
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product)
+    if (!product) {
       return res.status(404).json({ message: "Product not found" });
+    }
     res.json(product);
   } catch (err) {
     console.error("Error fetching product:", err);
@@ -73,29 +112,52 @@ exports.getProduct = async (req, res) => {
   }
 };
 
-// ✅ UPDATE Product
+// UPDATE Product
 exports.updateProduct = async (req, res) => {
   try {
-    const { title, description, price, rating, category, stock ,mrp,discount} = req.body;
+    const {
+      title,
+      description,
+      price,
+      rating,
+      category,
+      stock,
+      mrp,
+      discount,
+      type,
+    } = req.body;
 
     const product = await Product.findById(req.params.id);
-    if (!product)
+    if (!product) {
       return res.status(404).json({ message: "Product not found" });
+    }
 
-    // Update only provided fields
-    if (title) product.title = title;
-    if (description) product.description = description;
-    if (price) product.price = price;
-    if (rating) product.rating = rating;
-    if (category) product.category = category;
-    if(mrp) product.mrp = Number(mrp);
-    if(discount) product.discount = Number(discount);
-    if (stock !== undefined) product.stock = Number(stock);
+    if (title !== undefined) product.title = title;
+    if (description !== undefined) product.description = description;
+    if (price !== undefined && price !== "") {
+      product.price = toNumber(price, product.price);
+    }
+    if (rating !== undefined && rating !== "") {
+      product.rating = toNumber(rating, product.rating);
+    }
+    if (category !== undefined) product.category = category;
+    if (type !== undefined) product.type = type;
+    if (mrp !== undefined && mrp !== "") {
+      product.mrp = toNumber(mrp, product.mrp);
+    }
+    if (discount !== undefined && discount !== "") {
+      product.discount = toNumber(discount, product.discount);
+    }
+    if (stock !== undefined && stock !== "") {
+      product.stock = toNumber(stock, product.stock);
+    }
 
-    // Append new images if uploaded
-    if (req.files && req.files.length > 0) {
-      const newImageUrls = await uploadImages(req.files);
-      product.images = product.images.concat(newImageUrls);
+    const bodyImages = collectImageUrls(req.body);
+    const uploadedImages =
+      req.files && req.files.length > 0 ? await uploadImages(req.files) : [];
+
+    if (bodyImages.length > 0 || uploadedImages.length > 0) {
+      product.images = [...bodyImages, ...uploadedImages];
     }
 
     await product.save();
@@ -106,12 +168,13 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-// ✅ DELETE Product
+// DELETE Product
 exports.deleteProduct = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
-    if (!product)
+    if (!product) {
       return res.status(404).json({ message: "Product not found" });
+    }
 
     res.json({ message: "Product deleted successfully" });
   } catch (err) {

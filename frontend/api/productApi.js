@@ -116,15 +116,15 @@ const productApi = {
   getById: (id) => apiClient.get(`${BASE_URL}/${id}`),
 
   // Create new product
-  create: async (productData) => {
-    const response = await apiClient.post(BASE_URL, productData);
+  create: async (productData, config = {}) => {
+    const response = await apiClient.post(BASE_URL, productData, config);
     clearProductCache();
     return response;
   },
 
   // Update product by ID
-  update: async (id, productData) => {
-    const response = await apiClient.put(`${BASE_URL}/${id}`, productData);
+  update: async (id, productData, config = {}) => {
+    const response = await apiClient.put(`${BASE_URL}/${id}`, productData, config);
     clearProductCache();
     return response;
   },
