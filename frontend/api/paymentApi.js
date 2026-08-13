@@ -1,9 +1,10 @@
-import apiClient from './apiClient';
+import apiClient from "./apiClient";
 
-const BASE = '/payment';
+const BASE = "/payment";
 
 const paymentApi = {
-  process: (payload) => apiClient.post(BASE, payload),
+  createOrder: (payload) => apiClient.post(`${BASE}/create-order`, payload),
+  verify: (payload) => apiClient.post(`${BASE}/verify`, payload),
 };
 
 export default paymentApi;
