@@ -24,97 +24,7 @@ import { ReactSortable } from "react-sortablejs";
 import * as XLSX from "xlsx";
 import productApi from "../../../api/productApi";
 
-const normalizeHeader = (value) =>
-  String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_-]+/g, "");
-
-const readRowValue = (row, keys) => {
-  const normalized = Object.fromEntries(
-    Object.entries(row || {}).map(([key, value]) => [normalizeHeader(key), value])
-  );
-
-  for (const key of keys) {
-    const value = normalized[normalizeHeader(key)];
-    if (value !== undefined && value !== null && value !== "") {
-      return value;
-    }
-  }
-
-  return "";
-};
-
-const parseNumber = (value, fallback = null) => {
-  if (value === undefined || value === null || value === "") return fallback;
-  const parsed = Number(String(value).replace(/,/g, "").trim());
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
-
-const parseImageList = (value) => {
-  if (!value) return [];
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => parseImageList(entry));
-  }
-
-  return String(value)
-    .split(/[\n,|;]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
-
-const normalizeExcelRow = (row, index) => {
-  const title = String(readRowValue(row, ["title", "producttitle", "name"])).trim();
-  const description = String(
-    readRowValue(row, ["description", "details", "about"])
-  ).trim();
-  const category = String(
-    readRowValue(row, ["category", "cat", "categoryname"])
-  ).trim();
-  const type = String(readRowValue(row, ["type", "subtype", "subcategory"])).trim();
-
-  const price = parseNumber(
-    readRowValue(row, ["price", "saleprice", "sellingprice"]),
-    null
-  );
-  const mrp = parseNumber(
-    readRowValue(row, ["mrp", "originalprice", "regularprice"]),
-    null
-  );
-  const stock = parseNumber(readRowValue(row, ["stock", "quantity", "qty"]), null);
-  const rating = parseNumber(readRowValue(row, ["rating", "stars"]), 0);
-  const discount = parseNumber(
-    readRowValue(row, ["discount", "discountpercent", "offer"]),
-    0
-  );
-  const images = parseImageList(
-    readRowValue(row, ["images", "image", "imageurl", "imageurls", "url"])
-  );
-
-  const issues = [];
-
-  if (!title) issues.push("Missing title");
-  if (!category) issues.push("Missing category");
-  if (price === null) issues.push("Missing price");
-  if (stock === null) issues.push("Missing stock");
-  if (mrp === null) issues.push("Missing MRP");
-
-  return {
-    rowNumber: index + 2,
-    title,
-    description,
-    category,
-    type,
-    price,
-    mrp,
-    stock,
-    rating,
-    discount,
-    images,
-    issues,
-    isValid: issues.length === 0,
-  };
-};
+import { parseProductSheet } from "../../utils/productImport";
 
 const downloadTemplate = () => {
   const workbook = XLSX.utils.book_new();
@@ -160,6 +70,13 @@ const Products = () => {
   const [importFileName, setImportFileName] = useState("");
   const [importing, setImporting] = useState(false);
   const [parsingExcel, setParsingExcel] = useState(false);
+  const [isSalesReport, setIsSalesReport] = useState(false);
+  const [quantityConfirmed, setQuantityConfirmed] = useState(false);
+  const importPreviewUrls = useRef(new Set());
+  useEffect(() => {
+    const urls = importPreviewUrls.current;
+    return () => urls.forEach(url => URL.revokeObjectURL(url));
+  }, []);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -421,20 +338,24 @@ const Products = () => {
       }
 
       const sheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      const { rows: normalized, isSalesReport: salesReport } = parseProductSheet(
+        XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", blankrows: true })
+      );
 
-      if (!rows.length) {
+      if (!normalized.length) {
         toast.error("No product rows found in the file");
         return;
       }
 
-      const normalized = rows.map((row, index) => normalizeExcelRow(row, index));
+      setIsSalesReport(salesReport);
+      setQuantityConfirmed(false);
+      releaseImportImages(importRows);
       setImportRows(normalized);
       setImportFileName(file.name);
       toast.success(`Loaded ${normalized.length} row(s) from Excel`);
     } catch (error) {
       console.error(error);
-      toast.error("Could not read Excel file");
+      toast.error(error.message || "Could not read Excel file");
     } finally {
       setParsingExcel(false);
       if (importInputRef.current) {
@@ -443,7 +364,28 @@ const Products = () => {
     }
   };
 
+  const updateImportRow = (rowNumber, changes) => {
+    setImportRows(rows => rows.map(row => row.rowNumber === rowNumber ? { ...row, ...changes } : row));
+  };
+  const releaseImportImages = (rows) => rows.forEach(row => row.imageFiles.forEach(image => {
+    URL.revokeObjectURL(image.url);
+    importPreviewUrls.current.delete(image.url);
+  }));
+  const selectImportImages = (row, fileList) => {
+    const files = Array.from(fileList || []);
+    if (files.length > 5 || files.some(file => !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 10 * 1024 * 1024)) {
+      toast.error("Choose up to 5 JPG, PNG, WebP or GIF images, up to 10 MB each.");
+      return;
+    }
+    releaseImportImages([row]);
+    updateImportRow(row.rowNumber, { imageFiles: files.map(file => {
+      const url = URL.createObjectURL(file);
+      importPreviewUrls.current.add(url);
+      return { file, url };
+    }) });
+  };
   const handleImportSubmit = async () => {
+    if (importing || (isSalesReport && !quantityConfirmed)) return;
     const validRows = importRows.filter((row) => row.isValid);
     if (!validRows.length) {
       toast.error("No valid rows to import");
@@ -453,10 +395,12 @@ const Products = () => {
     setImporting(true);
     const createdProducts = [];
     let failed = 0;
+    const completedRows = new Set();
 
     try {
       for (const row of validRows) {
         const data = new FormData();
+        row.imageFiles.forEach(image => data.append("images", image.file));
         data.append("title", row.title);
         data.append("description", row.description || "");
         data.append("category", row.category);
@@ -475,6 +419,8 @@ const Products = () => {
             headers: { "Content-Type": "multipart/form-data" },
           });
           createdProducts.push(response.data);
+          completedRows.add(row.rowNumber);
+          releaseImportImages([row]);
         } catch (error) {
           failed += 1;
           console.error("Failed to import row", row.rowNumber, error);
@@ -485,8 +431,7 @@ const Products = () => {
         setProducts((prev) => [...prev, ...createdProducts]);
       }
 
-      setImportRows([]);
-      setImportFileName("");
+      setImportRows(rows => rows.filter(row => !completedRows.has(row.rowNumber)));
 
       if (failed > 0) {
         toast.warn(`Imported ${createdProducts.length} row(s), ${failed} failed`);
@@ -499,6 +444,8 @@ const Products = () => {
   };
 
   const handleClearImport = () => {
+    if (importing) return;
+    releaseImportImages(importRows);
     setImportRows([]);
     setImportFileName("");
     if (importInputRef.current) {
@@ -613,13 +560,13 @@ const Products = () => {
                 Excel Upload
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Upload a product sheet, preview the rows, then import the valid ones.
+                Upload your stock sheet. Product details fill automatically; edit only images and descriptions in the preview.
               </p>
             </div>
             <button
               type="button"
               onClick={() => importInputRef.current?.click()}
-              disabled={parsingExcel}
+              disabled={parsingExcel || importing}
               className="bg-gray-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-black transition cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {parsingExcel ? (
@@ -653,9 +600,9 @@ const Products = () => {
             <button
               type="button"
               onClick={handleImportSubmit}
-              disabled={!importRows.length || importing}
+              disabled={!importRows.length || importing || (isSalesReport && !quantityConfirmed)}
               className={`px-4 py-2 rounded-lg text-white flex items-center gap-2 transition cursor-pointer ${
-                !importRows.length || importing
+                !importRows.length || importing || (isSalesReport && !quantityConfirmed)
                   ? "bg-red-300 cursor-not-allowed"
                   : "bg-red-500 hover:bg-red-600"
               }`}
@@ -673,6 +620,7 @@ const Products = () => {
             <button
               type="button"
               onClick={handleClearImport}
+              disabled={importing}
               className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition cursor-pointer"
             >
               Clear Preview
@@ -697,7 +645,7 @@ const Products = () => {
           <div className="mt-4 text-xs text-gray-500 leading-5">
             Accepted columns:{" "}
             <span className="font-medium">
-              title, description, category, type, price, mrp, stock, rating, discount, imageUrls
+              Product, Category, MRP, Quantity, Sales Price (or the downloaded template)
             </span>
           </div>
 
@@ -732,7 +680,7 @@ const Products = () => {
             <div>
               <h3 className="font-semibold text-gray-800">Excel Preview</h3>
               <p className="text-sm text-gray-500">
-                Review the parsed rows before importing them.
+                Edit images and descriptions below. Other values come from Excel; correct them in the file and upload again.
               </p>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -745,7 +693,13 @@ const Products = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="px-4 py-3 border-b space-y-3">
+            {isSalesReport && <label className="flex items-center gap-2 text-sm text-amber-800">
+              <input type="checkbox" checked={quantityConfirmed} disabled={importing} onChange={event => setQuantityConfirmed(event.target.checked)} />
+              This file is a Sales Summary. I confirm Quantity is available stock, not units sold.
+            </label>}
+          </div>
+          <div className="overflow-x-auto max-h-[600px]">
             <table className="min-w-[1000px] w-full text-sm text-left text-gray-700">
               <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
                 <tr>
@@ -756,6 +710,7 @@ const Products = () => {
                   <th className="px-4 py-3">MRP</th>
                   <th className="px-4 py-3">Stock</th>
                   <th className="px-4 py-3">Rating</th>
+                  <th className="px-4 py-3">Description</th>
                   <th className="px-4 py-3">Images</th>
                   <th className="px-4 py-3">Status</th>
                 </tr>
@@ -770,7 +725,21 @@ const Products = () => {
                     <td className="px-4 py-3">Rs. {row.mrp ?? "-"}</td>
                     <td className="px-4 py-3">{row.stock ?? "-"}</td>
                     <td className="px-4 py-3">{row.rating ?? "-"}</td>
-                    <td className="px-4 py-3">{row.images.length}</td>
+                    <td className="px-4 py-3">
+                      <textarea aria-label={'Description for ' + row.title} className="border rounded p-2 min-w-48" rows={3} disabled={importing} value={row.description} onChange={event => updateImportRow(row.rowNumber, { description: event.target.value })} placeholder="Add description" />
+                    </td>
+                    <td className="px-4 py-3 min-w-64">
+                      <div className="flex gap-2 flex-wrap mb-2">
+                        {row.images.map((url, index) => <div key={index}>
+                          <img src={url} alt={row.title} className="w-12 h-12 object-cover rounded" />
+                          <button type="button" disabled={importing} onClick={() => updateImportRow(row.rowNumber, { images: row.images.filter((_, i) => i !== index) })}>Remove</button>
+                        </div>)}
+                        {row.imageFiles.map(image => <img key={image.url} src={image.url} alt={image.file.name} className="w-12 h-12 object-cover rounded" />)}
+                      </div>
+                      <input aria-label={'Images for ' + row.title} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={importing} onChange={event => { selectImportImages(row, event.target.files); event.target.value = ""; }} className="max-w-64 text-xs" />
+                      {row.imageFiles.length > 0 && <button type="button" disabled={importing} className="block text-xs mt-2 text-red-600" onClick={() => selectImportImages(row, [])}>Clear selected images</button>}
+                      <p className="text-xs text-gray-500 mt-1">Up to 5 new images, 10 MB each. Optional.</p>
+                    </td>
                     <td className="px-4 py-3">
                       {row.isValid ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 text-green-700">
