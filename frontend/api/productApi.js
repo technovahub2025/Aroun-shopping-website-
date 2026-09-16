@@ -125,7 +125,15 @@ const productApi = {
   // Update product by ID
   update: async (id, productData, config = {}) => {
     const response = await apiClient.put(`${BASE_URL}/${id}`, productData, config);
-    clearProductCache();
+
+    // Replace only the edited item in the cached catalog. Clearing this cache
+    // makes the admin product page fetch the entire list again after every edit.
+    patchCacheList(buildCacheKey(), (rows) =>
+      rows.map((product) =>
+        product?._id === response.data?._id ? response.data : product
+      )
+    );
+
     return response;
   },
 
