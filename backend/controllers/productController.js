@@ -1,6 +1,6 @@
-const { Products: Product, provider, store } = require('../storage/repositories');
-const { respond, error } = require('../storage/errors');
+const Product = require("../models/productModel");
 const cloudinary = require("../utils/cloudinary");
+
 const drive = require("../utils/googleDrive");
 
 const uploadProductImages = async (req, uploadedDriveIds) => {
@@ -45,8 +45,7 @@ const cleanupDriveImages = async (ids) => {
 const toNumber = (value, fallback = undefined) => {
   if (value === undefined || value === null || value === "") return fallback;
   const parsed = Number(String(value).replace(/,/g, ""));
-  if (!Number.isFinite(parsed)) throw error('VALIDATION_ERROR', 400, 'Invalid numeric product field.');
-  return parsed;
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 const parseListField = (value) => {
@@ -120,8 +119,9 @@ exports.createProduct = async (req, res) => {
 
     res.status(201).json(product);
   } catch (err) {
-    if (err.code !== 'STORAGE_UNAVAILABLE') await cleanupDriveImages(uploadedDriveIds);
-    respond(res, err);
+    console.error("Error creating product:", err);
+    await cleanupDriveImages(uploadedDriveIds);
+    res.status(err.status || 500).json({ message: err.expose ? err.message : "Failed to create product" });
   }
 };
 
@@ -129,14 +129,12 @@ exports.createProduct = async (req, res) => {
 exports.getProducts = async (req, res) => {
   try {
     const { category } = req.query;
-    const deleted = req.query.deletedOnly === 'true';
-    if (deleted && req.user?.role !== 'admin') throw error('FORBIDDEN', 403, 'Admin only.');
-    const query = { ...(category ? { category } : {}), isDeleted: deleted ? true : { $ne: true } };
+    const query = category ? { category } : {};
     const products = await Product.find(query);
-    const search = String(req.query.search || req.query.q || '').toLowerCase();
-    res.json(products.filter(p => !search || `${p.title} ${p.description || ''} ${p.category}`.toLowerCase().includes(search)));
+    res.json(products);
   } catch (err) {
-    respond(res, err);
+    console.error("Error fetching products:", err);
+    res.status(500).json({ message: "Failed to fetch products" });
   }
 };
 
@@ -144,12 +142,13 @@ exports.getProducts = async (req, res) => {
 exports.getProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product || product.isDeleted) {
+    if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
     res.json(product);
   } catch (err) {
-    respond(res, err);
+    console.error("Error fetching product:", err);
+    res.status(500).json({ message: "Failed to fetch product" });
   }
 };
 
@@ -202,53 +201,23 @@ exports.updateProduct = async (req, res) => {
     await product.save();
     res.json(product);
   } catch (err) {
-    if (err.code !== 'STORAGE_UNAVAILABLE') await cleanupDriveImages(uploadedDriveIds);
-    respond(res, err);
+    console.error("Error updating product:", err);
+    await cleanupDriveImages(uploadedDriveIds);
+    res.status(err.status || 500).json({ message: err.expose ? err.message : "Failed to update product" });
   }
 };
 
 // DELETE Product
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findByIdAndDelete(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    product.isDeleted = true; product.deletedAt = new Date();
-    await product.save();
     res.json({ message: "Product deleted successfully" });
   } catch (err) {
-    respond(res, err);
+    console.error("Error deleting product:", err);
+    res.status(500).json({ message: "Failed to delete product" });
   }
-};
-
-exports.getDeleted = async (req, res) => {
-  try { res.json(await Product.find({ isDeleted: true })); } catch (err) { respond(res, err); }
-};
-exports.restoreProduct = async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) throw error('NOT_FOUND', 404, 'Product not found.');
-    product.isDeleted = false; product.deletedAt = undefined; await product.save();
-    res.json(product);
-  } catch (err) { respond(res, err); }
-};
-exports.deleteCategory = async (req, res) => {
-  try {
-    let count = 0;
-    if (provider() === 'google-drive') {
-      count = await store.mutate('products', rows => {
-        let total = 0;
-        for (const p of rows) if (p.category === req.params.category && !p.isDeleted) {
-          p.isDeleted = true; p.deletedAt = p.updatedAt = new Date().toISOString(); p.__v++; total++;
-        }
-        return total;
-      });
-    } else {
-      const result = await Product.updateMany({ category: req.params.category, isDeleted: { $ne: true } }, { $set: { isDeleted: true, deletedAt: new Date() }, $inc: { __v: 1 } });
-      count = result.modifiedCount;
-    }
-    res.json({ message: 'Category deleted successfully', deletedCount: count });
-  } catch (err) { respond(res, err); }
 };

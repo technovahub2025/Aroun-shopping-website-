@@ -269,7 +269,7 @@ const Checkout = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <p className="eyebrow">ONE LAST LITTLE STEP</p><h1 className="page-title">Make it yours.</h1><p className="page-description">Add your delivery details and review your order.</p>
+      <h1 className="text-2xl font-semibold mb-8">Checkout</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>

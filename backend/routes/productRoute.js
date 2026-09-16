@@ -8,15 +8,13 @@ const { protect, admin } = require("../middleware/authmiddleware");
 
 // CRUD routes
 router.post("/", protect, admin, upload.array("images", 5), createProduct);
-router.get('/', (req, res, next) => req.query.deletedOnly === 'true' ? protect(req, res, next) : next(), getProducts);
-router.get('/deleted/list', protect, admin, require('../controllers/productController').getDeleted);
-router.patch('/:id/restore', protect, admin, require('../controllers/productController').restoreProduct);
-router.delete('/deletecategory/:category', protect, admin, require('../controllers/productController').deleteCategory);
+router.get("/", getProducts); // keep public
 router.get("/:id", getProduct); // keep public
 router.put("/:id", protect, admin, upload.array("images", 5), updateProduct);
 router.delete("/:id", protect, admin, deleteProduct);
 
 module.exports = router;
+
 router.use((err, req, res, next) => {
   if (err.name === 'MulterError' || err.status === 400) {
     return res.status(400).json({ message: err.code === 'LIMIT_FILE_SIZE'

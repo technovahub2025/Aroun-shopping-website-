@@ -11,7 +11,7 @@ import {
   FaTimes,
   FaTrash,
 } from "react-icons/fa";
-import { motion as Motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "../redux/userSlice";
 
@@ -31,9 +31,7 @@ const ProductList = () => {
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
   const [searchParams] = useSearchParams();
 
-  useEffect(() => { setCurrentPage(1); }, [searchParams]);
-
-  const itemsPerPage = 24;
+  const itemsPerPage = 60;
   const sortOptions = [
     "Relevant",
     "Price: Low to High",
@@ -42,7 +40,6 @@ const ProductList = () => {
   ];
 
   const selectedCategory = searchParams.get("category");
-  const searchQuery = (searchParams.get("q") || "").trim().toLowerCase();
   const isAdmin = user?.role === "admin";
 
   useEffect(() => {
@@ -64,7 +61,7 @@ const ProductList = () => {
     const fetchData = async () => {
       try {
         const res = await productApi.getAll();
-        const data = Array.isArray(res.data) ? res.data : res.data?.products || [];
+        const data = res.data || [];
 
         setProducts(data);
 
@@ -76,8 +73,7 @@ const ProductList = () => {
           Array.from(new Set(data.map((p) => p.type).filter(Boolean)))
         );
 
-        setCategoryFilters(selectedCategory ? [selectedCategory] : []);
-        setCurrentPage(1);
+        if (selectedCategory) setCategoryFilters([selectedCategory]);
       } catch (err) {
         setError(err.response?.data?.message || err.message);
       } finally {
@@ -127,7 +123,6 @@ const ProductList = () => {
 
   const filteredAndSortedProducts = useMemo(() => {
     let temp = [...products];
-    if (searchQuery) temp = temp.filter(p => [p.name, p.title, p.category, p.description].filter(Boolean).join(" ").toLowerCase().includes(searchQuery));
 
     if (categoryFilters.length > 0) {
       temp = temp.filter((p) =>
@@ -154,7 +149,7 @@ const ProductList = () => {
     }
 
     return temp;
-  }, [products, categoryFilters, typeFilters, sortBy, searchQuery]);
+  }, [products, categoryFilters, typeFilters, sortBy]);
 
   const indexOfLast = currentPage * itemsPerPage;
   const currentProducts = filteredAndSortedProducts.slice(
@@ -218,18 +213,17 @@ const getPageNumbers = () => {
     return <p className="text-center text-red-500 py-20">Error: {error}</p>;
 
   return (
-    <div className="catalog-page max-w-7xl mx-auto px-4 py-10">
+    <div className="max-w-7xl mx-auto px-4 py-10">
       <div>
         <h1 className="text-xl font-bold text-gray-800 mb-6">
-          {searchQuery ? `Results for "${searchParams.get("q")}"` : selectedCategory || "The everyday collection."}
+          {selectedCategory ? `${selectedCategory} Products` : "All Products"}
         </h1>
-        <p className="catalog-intro">A little of everything you need. Find your favorites and make yourself at home.</p>
       </div>
 
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <button
-            className="md:hidden flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg shadow hover:bg-red-600 transition"
+            className="sm:hidden flex items-center gap-1 bg-red-500 text-white px-3 py-2 rounded-lg shadow hover:bg-red-600 transition"
             onClick={() => setShowFilters(true)}
           >
             <FaFilter /> Filters
@@ -237,8 +231,7 @@ const getPageNumbers = () => {
 
           <select
             value={sortBy}
-            aria-label="Sort products"
-            onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+            onChange={(e) => setSortBy(e.target.value)}
             className="border border-gray-300 px-3 py-2 rounded-lg text-sm shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer"
           >
             {sortOptions.map((option) => (
@@ -253,7 +246,7 @@ const getPageNumbers = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         <AnimatePresence>
           {showFilters && !isDesktop && (
-            <Motion.div
+            <motion.div
               key="overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
@@ -265,7 +258,7 @@ const getPageNumbers = () => {
           )}
 
           {(showFilters || isDesktop) && (
-            <Motion.aside
+            <motion.aside
               key="filters"
               initial={{ x: isDesktop ? 0 : -300, opacity: isDesktop ? 1 : 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -348,13 +341,13 @@ const getPageNumbers = () => {
                   ))}
                 </div>
               )}
-            </Motion.aside>
+            </motion.aside>
           )}
         </AnimatePresence>
 
         <main className="md:col-span-9">
           {filteredAndSortedProducts.length === 0 ? (
-            <p className="text-center text-gray-500 py-10">No products found. <Link to="/product" onClick={() => {setCategoryFilters([]); setTypeFilters([]);}} className="underline">Clear filters</Link></p>
+            <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
               {currentProducts.map((product) => (
@@ -365,15 +358,15 @@ const getPageNumbers = () => {
                 >
                   <div className="relative bg-gray-50 flex items-center justify-center aspect-[4/3] overflow-hidden">
                     <img
-                      src={product.images?.[0]?.url || product.images?.[0] || product.image || "/product-placeholder.svg"}
-                      alt={product.name || product.title}
+                      src={product.images?.[0] || "/placeholder.png"}
+                      alt={product.title}
                       className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
 
                   <div className="p-4 text-center">
                     <h3 className="text-base font-semibold text-gray-800 line-clamp-2 mb-1">
-                      {product.name || product.title}
+                      {product.title}
                     </h3>
 
                     {product.type && (
