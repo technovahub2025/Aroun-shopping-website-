@@ -8,7 +8,7 @@ import { setUser } from "../redux/userSlice";
 
 const Auth = ({ toggleLoginModal }) => {
   const [step, setStep] = useState("phone");
-  const [phone, setPhone] = useState("+91");
+  const [phone, setPhone] = useState(" ");
   const [otp, setOtp] = useState(["", "", "", ""]); 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
