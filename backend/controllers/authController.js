@@ -64,10 +64,26 @@ const { sendOTP, verifyOTP } = require('../utils/twilio');
 const generateToken = require('../utils/jwt');
 const bcrypt = require("bcryptjs");
 
-const STATIC_ADMIN_PHONE = '9876543201';
+const STATIC_ADMIN_PHONE = '+919876543201';
 const STATIC_ADMIN_PASSWORD = 'admin123';
 const STATIC_ADMIN_ID = 'static-admin';
-const isStaticAdminPhone = (phone) => String(phone).replace(/\D/g, '').slice(-10) === STATIC_ADMIN_PHONE;
+// New Indian phone numbers use E.164; legacy 10-digit records remain supported.
+const normalizeIndianPhone = (phone) => {
+  const value = String(phone || '').trim().replace(/[\s-]/g, '');
+  const digits = value.replace(/\D/g, '');
+  if (/^[6-9]\d{9}$/.test(digits)) return `+91${digits}`;
+  if (/^91[6-9]\d{9}$/.test(digits)) return `+${digits}`;
+  return value;
+};
+
+const phoneVariants = (phone) => {
+  const normalized = normalizeIndianPhone(phone);
+  const indianMatch = normalized.match(/^\+91([6-9]\d{9})$/);
+  return indianMatch ? [normalized, indianMatch[1]] : [normalized];
+};
+
+const findUserByPhone = (phone) => User.findOne({ phone: { $in: phoneVariants(phone) } });
+const isStaticAdminPhone = (phone) => normalizeIndianPhone(phone) === STATIC_ADMIN_PHONE;
 
 const setAuthCookie = (res, token) => {
   res.cookie('token', token, {
@@ -84,15 +100,16 @@ exports.sendOtp = async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ message: 'Phone number required' });
 
+    const normalizedPhone = normalizeIndianPhone(phone);
     const phoneRegex = /^\+?[1-9]\d{7,14}$/;
-    if (!phoneRegex.test(phone)) return res.status(400).json({ message: 'Invalid phone number' });
+    if (!phoneRegex.test(normalizedPhone)) return res.status(400).json({ message: 'Invalid phone number' });
 
     // Find or create user
-    let user = await User.findOne({ phone  });
-    if (!user) user = await User.create({ phone });
+    let user = await findUserByPhone(normalizedPhone);
+    if (!user) user = await User.create({ phone: normalizedPhone });
 
     // Send OTP via Twilio
-    await sendOTP(phone);
+    await sendOTP(normalizedPhone);
 
     res.json({ message: 'OTP sent successfully via SMS' });
   } catch (err) {
@@ -107,11 +124,12 @@ exports.verifyOtp = async (req, res) => {
     const { phone, code } = req.body;
     if (!phone || !code) return res.status(400).json({ message: 'Phone and OTP required' });
 
-    const user = await User.findOne({ phone });
+    const normalizedPhone = normalizeIndianPhone(phone);
+    const user = await findUserByPhone(normalizedPhone);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // Verify via Twilio
-    const twilioRes = await verifyOTP(phone, code);
+    const twilioRes = await verifyOTP(normalizedPhone, code);
     if (!twilioRes.valid) return res.status(400).json({ message: 'Invalid or expired OTP' });
 
     // Generate JWT & set cookie
@@ -280,7 +298,8 @@ exports.registerWithPassword = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const existingUser = await User.findOne({ phone });
+    const normalizedPhone = normalizeIndianPhone(phone);
+    const existingUser = await findUserByPhone(normalizedPhone);
     if (existingUser) {
       return res.status(409).json({ message: "Phone Number already registered" });
     }
@@ -289,7 +308,7 @@ exports.registerWithPassword = async (req, res) => {
 
     const user = await User.create({
       firstName:name,
-      phone,
+      phone: normalizedPhone,
       password: hashedPassword,
     });
 
@@ -331,7 +350,7 @@ exports.loginWithPassword = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ phone });
+    const user = await findUserByPhone(phone);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

@@ -123,10 +123,6 @@ const Navbar = () => {
     }
 
     try {
-      var ninetyone = "+91";
-      if (!formData.phone.startsWith(ninetyone)) {
-        formData.phone = ninetyone + formData.phone;
-      }
       const { data } = await API.post("/auth/register", {
         name: formData.name,
         phone: formData.phone,
@@ -147,10 +143,6 @@ const Navbar = () => {
     if (e && e.preventDefault) e.preventDefault();
     setError("");
 
-    var ninetyone = "+91";
-    if (!formData.phone.startsWith(ninetyone)) {
-      formData.phone = ninetyone + formData.phone;
-    }
     if (!formData.password.trim()) {
       setError("Password is required");
       return;
