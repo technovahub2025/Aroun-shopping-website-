@@ -67,24 +67,6 @@ const bcrypt = require("bcryptjs");
 const STATIC_ADMIN_PHONE = '9876543201';
 const STATIC_ADMIN_PASSWORD = 'admin123';
 const STATIC_ADMIN_ID = 'static-admin';
-// New Indian phone numbers use E.164; legacy 10-digit records remain supported.
-const normalizeIndianPhone = (phone) => {
-  const value = String(phone || '').trim().replace(/[\s-]/g, '');
-  const digits = value.replace(/\D/g, '');
-  if (/^[6-9]\d{9}$/.test(digits)) return `+91${digits}`;
-  if (/^91[6-9]\d{9}$/.test(digits)) return `+${digits}`;
-  return value;
-};
-
-const phoneVariants = (phone) => {
-  const normalized = normalizeIndianPhone(phone);
-  const indianMatch = normalized.match(/^\+91([6-9]\d{9})$/);
-  return indianMatch ? [normalized, indianMatch[1]] : [normalized];
-};
-
-const findUserByPhone = (phone) => User.findOne({ phone: { $in: phoneVariants(phone) } });
-// Match both the legacy 10-digit admin number and its normalized +91 form.
-const isStaticAdminPhone = (phone) => phoneVariants(phone).includes(STATIC_ADMIN_PHONE);
 
 const setAuthCookie = (res, token) => {
   res.cookie('token', token, {
