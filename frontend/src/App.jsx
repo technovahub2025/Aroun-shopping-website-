@@ -7,6 +7,7 @@ import { store } from "./app/store";
 import { setUser } from "./redux/userSlice";
 
 // Components
+import ScrollToTop from "./components/ScrollToTop";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
 import Footer from "./components/Footer";
@@ -38,6 +39,8 @@ const AppContent = () => {
     <>
       {!hideNavbar && <Navbar />  }
 
+      <ScrollToTop />
+      <div className={hideNavbar ? "admin-page" : "store-page"}>
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Home />} />
@@ -94,6 +97,7 @@ const AppContent = () => {
           }
         />
       </Routes>
+      </div>
       {!hideNavbar && (
         <>
           <BottomNav />

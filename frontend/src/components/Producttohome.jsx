@@ -1,228 +1,32 @@
-
-
-
-import React, { useEffect, useState } from "react";
-import productApi from "../../api/productApi";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaStar, FaStarHalfAlt, FaRegStar } from "react-icons/fa";
-import { Loader2 } from "lucide-react";
-import Title from "./Title";
-
-const Producttohome = () => {
-  const [products, setProducts] = useState([]);
-  const [visibleCount, setVisibleCount] = useState(8); // initially show 8
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [filter, setFilter] = useState(""); // category filter
-
-  const normalizeProducts = (payload) => {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.products)) return payload.products;
-    if (Array.isArray(payload?.data)) return payload.data;
-    return [];
-  };
-
-  // Fetch all products
+import { ArrowUpRight, Package } from "lucide-react";
+import productApi from "../../api/productApi";
+export default function Producttohome() {
+  const [products, setProducts] = useState([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(false),
+    [filter, setFilter] = useState('');
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await productApi.getAll();
-        let data = response.data;
-
-        // Normalize response shape
-        if (!Array.isArray(data)) {
-          data = data?.products || [];
-        }
-
-        if (!Array.isArray(data)) {
-          console.error("Expected products to be an array, got:", data);
-          setProducts([]);
-          return;
-        }
-
-        setProducts(data);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-      } finally {
-        setLoading(false);
-      }
+    let active = true;
+    productApi.getAll().then(({
+      data
+    }) => {
+      if (active) setProducts(Array.isArray(data) ? data : data?.products || []);
+    }).catch(() => {
+      if (active) setError(true);
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => {
+      active = false;
     };
-    fetchProducts();
   }, []);
-
-  // Rating stars helper
-  const renderStars = (rating = 0) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      if (rating >= i) stars.push(<FaStar key={i} className="text-yellow-400" />);
-      else if (rating >= i - 0.5)
-        stars.push(<FaStarHalfAlt key={i} className="text-yellow-400" />);
-      else stars.push(<FaRegStar key={i} className="text-yellow-400" />);
-    }
-    return stars;
-  };
-
-  // Unique category list (for dropdown)
-  const categories = Array.isArray(products)
-    ? [...new Set(products.map((p) => p.category).filter(Boolean))]
-    : [];
-
-  // Filtered products
-  const filteredProducts = filter
-    ? products.filter((p) => p?.category === filter)
-    : products;
-
-  // Visible subset
-  const visibleProducts = Array.isArray(filteredProducts)
-    ? filteredProducts.slice(0, visibleCount)
-    : [];
-
-  // Load more handler
-  const handleLoadMore = () => {
-    setLoadingMore(true);
-    setTimeout(() => {
-      setVisibleCount((prev) => prev + 8);
-      setLoadingMore(false);
-    }, 1000);
-  };
-
-  // Main loading state
-  if (loading)
-    return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="animate-spin text-red-500 w-8 h-8 mr-2" />
-        <p className="text-gray-500 text-lg">Loading products...</p>
-      </div>
-    );
-
-  // No products case
-  if (!Array.isArray(products) || products.length === 0)
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-gray-500 text-lg">No products available right now.</p>
-      </div>
-    );
-
-  return (
-    <div className="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 md:px-10 lg:px-16">
-      <Title text="Explore Our Latest Products" />
-
-      {/* Category Filter */}
-      {categories.length > 0 && (
-        <div className="flex justify-end mb-6">
-          <select
-            value={filter}
-            onChange={(e) => {
-              setFilter(e.target.value);
-              setVisibleCount(8);
-            }}
-            className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 shadow-sm focus:ring-2 focus:ring-green-400 focus:outline-none"
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Product Grid */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-        {visibleProducts.map((product) => (
-          <div
-            key={product._id}
-            className="bg-white rounded-2xl mt-4 md:p-[10px] p-2 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
-          >
-            <Link to={`/products/${product._id}`}>
-              <img
-                src={
-                  product.images?.[0]?.url ||
-                  product.images?.[0] ||
-                  product.image ||
-                  "/placeholder.jpg"
-                }
-                alt={product.name || "product image"}
-                loading="lazy"
-                className="w-full md:h-[50vh] object-cover rounded-xl"
-              />
-            </Link>
-
-            <div className="flex-1 flex flex-col mt-4">
-              <h2 className="text-lg font-semibold text-gray-800 line-clamp-1">
-                {product.name}
-              </h2>
-
-              {product.category && (
-                <span className="text-xs font-medium text-gray-600 bg-gray-200 px-2 py-1 rounded-md w-fit mt-1">
-                  {product.category}
-                </span>
-              )}
-
-              <p className="text-gray-500 text-sm mt-1 line-clamp-2">
-                {product.description || "No description available"}
-              </p>
-
-              <div className="flex items-center gap-1 mt-2">
-                {renderStars(product.rating)}
-              </div>
-
-              <div className="mt-3 flex justify-between items-center">
-                {/* Price Section */}
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-red-600">
-                      ₹{product.price}
-                    </span>
-                    {product.mrp && (
-                      <span className="text-sm text-gray-500 line-through">
-                        ₹{product.mrp}
-                      </span>
-                    )}
-                  </div>
-                  {product.mrp && product.price && (
-                    <span className="text-xs text-green-600 font-semibold">
-                      {Math.round(
-                        Math.abs((product.mrp - product.price) / product.mrp) * 100
-                      )}
-                      % OFF
-                    </span>
-                  )}
-                </div>
-
-                <Link
-                  to={`/products/${product._id}`}
-                  className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-green-600 transition cursor-pointer"
-                >
-                  View
-                </Link>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Load More Button */}
-      {visibleCount < filteredProducts.length && (
-        <div className="flex justify-center mt-10">
-          <button
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition disabled:opacity-60"
-          >
-            {loadingMore ? (
-              <>
-                <Loader2 className="animate-spin w-5 h-5" /> Loading...
-              </>
-            ) : (
-              "Load More"
-            )}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default Producttohome;
+  const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+  const visible = products.filter(p => !filter || p.category === filter).slice(0, 8);
+  return <section className="catalog-section shell"><div className="section-heading"><div><p className="eyebrow">GOOD FINDS FOR YOUR EVERYDAY</p><h2>Make room in your basket.</h2></div><Link to="/product" className="text-link">Shop all products <ArrowUpRight size={18} /></Link></div>{categories.length > 0 && <div className="filter-tabs" aria-label="Filter featured products">{['', ...categories].map(cat => <button key={cat} className={filter === cat ? 'selected' : ''} aria-pressed={filter === cat} onClick={() => setFilter(cat)}>{cat || 'All essentials'}</button>)}</div>}<div className="featured-grid">{loading ? Array.from({
+        length: 4
+      }, (_, i) => <div key={i} className="product-skeleton" aria-label="Loading product" />) : visible.map(p => <Link to={`/products/${p._id}`} className="product-card" key={p._id}><div className="product-image">{p.images?.[0] || p.image ? <img src={p.images?.[0]?.url || p.images?.[0] || p.image} alt={p.name || p.title} loading="lazy" onError={e => {
+            e.currentTarget.style.display = 'none';
+          }} /> : <Package size={48} />} {Number(p.mrp) > Number(p.price) && <span className="saving-badge">{Math.round((1 - p.price / p.mrp) * 100)}% off</span>}</div><div className="product-info"><p>{p.category || 'Daily essentials'}</p><h3>{p.name || p.title}</h3><div className="product-price"><span>&#8377;{Number(p.price || 0).toLocaleString('en-IN')} {Number(p.mrp) > Number(p.price) && <del>&#8377;{p.mrp}</del>}</span><span className="product-arrow"><ArrowUpRight size={19} /></span></div></div></Link>)}</div>{!loading && !visible.length && <div className="catalog-message"><Package size={30} /><h3>{error ? 'Our shelves are taking a moment to load.' : 'More everyday favorites are on their way.'}</h3><p>{error ? 'Please try the catalog again in a moment.' : 'Check back soon for new products.'}</p><Link to="/product" className="text-link">Visit the catalog <ArrowUpRight size={16} /></Link></div>}</section>;
+}

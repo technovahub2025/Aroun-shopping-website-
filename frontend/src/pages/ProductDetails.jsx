@@ -95,7 +95,7 @@ const ProductDetails = () => {
     return <p className="text-center text-gray-500 py-20">Product not found.</p>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
+    <div className="details-page max-w-7xl mx-auto px-4 py-10">
       {/* Back Button */}
       <Link
         to="/product"
