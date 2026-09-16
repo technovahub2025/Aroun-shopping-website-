@@ -9,7 +9,7 @@ const productSchema = new mongoose.Schema(
     discount: { type: Number, required: true },
     rating: { type: Number, default: 0 },
     category: { type: String, required: true }, 
-    images: [String], // Cloudinary URLs
+    images: [String], // Image URLs (including signed Google Drive image routes)
     stock: { type: Number, default: 0 }, 
   },
   { timestamps: true }

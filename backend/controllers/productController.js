@@ -1,6 +1,47 @@
 const Product = require("../models/productModel");
 const cloudinary = require("../utils/cloudinary");
 
+const drive = require("../utils/googleDrive");
+
+const uploadProductImages = async (req, uploadedDriveIds) => {
+  const files = req.files || [];
+  const provider = req.body.imageStorage || 'cloudinary';
+  if (!['google-drive', 'cloudinary'].includes(provider)) {
+    throw Object.assign(new Error('Unknown image storage provider.'), { status: 400, expose: true });
+  }
+  files.forEach(drive.validateImage);
+  let urls;
+  if (provider === 'google-drive') {
+    urls = [];
+    for (const file of files) {
+      const image = await drive.uploadImage(file);
+      uploadedDriveIds.push(image.id);
+      urls.push(image.url);
+    }
+  } else {
+    urls = await uploadImages(files);
+  }
+  // Preserve the interleaved order of existing URLs and newly selected files.
+  if (req.body.imageOrder !== undefined) {
+    let order;
+    try { order = JSON.parse(req.body.imageOrder); } catch { order = null; }
+    if (!Array.isArray(order) || order.some((item) =>
+      !(item && ((item.type === 'file' && Number.isInteger(item.index) && urls[item.index]) ||
+        (item.type === 'url' && typeof item.url === 'string' && /^https?:\/\//.test(item.url)))))) {
+      throw Object.assign(new Error('Invalid image order.'), { status: 400, expose: true });
+    }
+    return order.map((item) => item.type === 'file' ? urls[item.index] : item.url);
+  }
+  return [...collectImageUrls(req.body), ...urls];
+};
+
+const cleanupDriveImages = async (ids) => {
+  const results = await Promise.allSettled(ids.map(drive.deleteImage));
+  if (results.some((result) => result.status === 'rejected')) {
+    console.error('Could not clean up some unsaved Google Drive images.');
+  }
+};
+
 const toNumber = (value, fallback = undefined) => {
   if (value === undefined || value === null || value === "") return fallback;
   const parsed = Number(String(value).replace(/,/g, ""));
@@ -47,6 +88,7 @@ const uploadImages = async (files) => {
 
 // CREATE Product
 exports.createProduct = async (req, res) => {
+  const uploadedDriveIds = [];
   try {
     const {
       title,
@@ -60,10 +102,7 @@ exports.createProduct = async (req, res) => {
       type,
     } = req.body;
 
-    const bodyImages = collectImageUrls(req.body);
-    const uploadedImages =
-      req.files && req.files.length > 0 ? await uploadImages(req.files) : [];
-    const imageUrls = [...bodyImages, ...uploadedImages];
+    const imageUrls = await uploadProductImages(req, uploadedDriveIds);
 
     const product = await Product.create({
       title,
@@ -81,7 +120,8 @@ exports.createProduct = async (req, res) => {
     res.status(201).json(product);
   } catch (err) {
     console.error("Error creating product:", err);
-    res.status(500).json({ message: "Failed to create product" });
+    await cleanupDriveImages(uploadedDriveIds);
+    res.status(err.status || 500).json({ message: err.expose ? err.message : "Failed to create product" });
   }
 };
 
@@ -114,6 +154,7 @@ exports.getProduct = async (req, res) => {
 
 // UPDATE Product
 exports.updateProduct = async (req, res) => {
+  const uploadedDriveIds = [];
   try {
     const {
       title,
@@ -152,19 +193,17 @@ exports.updateProduct = async (req, res) => {
       product.stock = toNumber(stock, product.stock);
     }
 
-    const bodyImages = collectImageUrls(req.body);
-    const uploadedImages =
-      req.files && req.files.length > 0 ? await uploadImages(req.files) : [];
-
-    if (bodyImages.length > 0 || uploadedImages.length > 0) {
-      product.images = [...bodyImages, ...uploadedImages];
+    const images = await uploadProductImages(req, uploadedDriveIds);
+    if (req.body.imageOrder !== undefined || images.length > 0) {
+      product.images = images;
     }
 
     await product.save();
     res.json(product);
   } catch (err) {
     console.error("Error updating product:", err);
-    res.status(500).json({ message: "Failed to update product" });
+    await cleanupDriveImages(uploadedDriveIds);
+    res.status(err.status || 500).json({ message: err.expose ? err.message : "Failed to update product" });
   }
 };
 
