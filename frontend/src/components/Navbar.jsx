@@ -23,6 +23,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { setUser, clearUser } from "../redux/userSlice.js";
 import { useLocation } from "react-router-dom";
 
+const toIndianE164 = (phone) => `+91${phone.replace(/\D/g, "")}`;
+
 const Navbar = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -109,7 +111,7 @@ const Navbar = () => {
       setError("Phone number is required");
       return;
     }
-    if (formData.phone.length < 10) {
+    if (formData.phone.length !== 10) {
       setError("Please enter a valid phone number");
       return;
     }
@@ -125,7 +127,7 @@ const Navbar = () => {
     try {
       const { data } = await API.post("/auth/register", {
         name: formData.name,
-        phone: formData.phone,
+        phone: toIndianE164(formData.phone),
         password: formData.password,
       });
 
@@ -147,10 +149,14 @@ const Navbar = () => {
       setError("Password is required");
       return;
     }
+    if (formData.phone.length !== 10) {
+      setError("Please enter a valid 10-digit phone number");
+      return;
+    }
 
     try {
       const { data } = await API.post("/auth/login", {
-        phone: formData.phone,
+        phone: toIndianE164(formData.phone),
         password: formData.password,
       });
 
@@ -544,7 +550,7 @@ const Navbar = () => {
                   >
                     Phone Number <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
+                  <div className="relative flex">
                     <Phone
                       className={`absolute left-3 top-1/2 transform -translate-y-1/2 transition-all duration-300 ${
                         focusedField === "register-phone"
@@ -553,6 +559,9 @@ const Navbar = () => {
                       }`}
                       size={18}
                     />
+                    <span className="flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 pl-10 pr-2 text-sm font-medium text-gray-600">
+                      +91
+                    </span>
                     <input
                       type="tel"
                       name="phone"
@@ -568,7 +577,7 @@ const Navbar = () => {
                       maxLength={10}
                       onFocus={() => setFocusedField("register-phone")}
                       onBlur={() => setFocusedField(null)}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg transition-all duration-300 ${
+                      className={`w-full rounded-l-none pl-3 pr-4 py-2 border rounded-r-lg transition-all duration-300 ${
                         focusedField === "register-phone"
                           ? "border-green-500 ring-2 ring-green-200 shadow-md transform scale-[1.02]"
                           : "border-gray-300"
@@ -645,8 +654,11 @@ const Navbar = () => {
                       }`}
                       size={18}
                     />
+                    <span className="flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 pl-10 pr-2 text-sm font-medium text-gray-600">
+                      +91
+                    </span>
                     <input
-                      type="text"
+                      type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={(e) => {
@@ -660,7 +672,7 @@ const Navbar = () => {
                       maxLength={10}
                       onFocus={() => setFocusedField("login-phone")}
                       onBlur={() => setFocusedField(null)}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg transition-all duration-300 ${
+                      className={`w-full rounded-l-none pl-3 pr-4 py-2 border rounded-r-lg transition-all duration-300 ${
                         focusedField === "login-phone"
                           ? "border-green-500 ring-2 ring-green-200 shadow-md transform scale-[1.02]"
                           : "border-gray-300"
