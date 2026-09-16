@@ -68,6 +68,27 @@ const STATIC_ADMIN_PHONE = '9876543201';
 const STATIC_ADMIN_PASSWORD = 'admin123';
 const STATIC_ADMIN_ID = 'static-admin';
 
+// Normalize Indian phone input so both 10-digit and +91 formats work.
+const normalizeIndianPhone = (phone) => {
+  const value = String(phone || '').trim().replace(/[\s-]/g, '');
+  const digits = value.replace(/\D/g, '');
+  if (/^[6-9]\d{9}$/.test(digits)) return `+91${digits}`;
+  if (/^91[6-9]\d{9}$/.test(digits)) return `+${digits}`;
+  return value;
+};
+
+const phoneVariants = (phone) => {
+  const normalized = normalizeIndianPhone(phone);
+  const indianMatch = normalized.match(/^\+91([6-9]\d{9})$/);
+  return indianMatch ? [normalized, indianMatch[1]] : [normalized];
+};
+
+const findUserByPhone = (phone) =>
+  User.findOne({ phone: { $in: phoneVariants(phone) } });
+
+const isStaticAdminPhone = (phone) =>
+  phoneVariants(phone).includes(STATIC_ADMIN_PHONE);
+
 const setAuthCookie = (res, token) => {
   res.cookie('token', token, {
     httpOnly: true,
