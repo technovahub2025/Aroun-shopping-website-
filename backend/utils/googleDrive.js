@@ -41,13 +41,33 @@ async function accessToken() {
 async function driveFetch(url, options = {}) {
   const response = await fetch(url, {
     ...options,
-    headers: { ...options.headers, Authorization: `Bearer ${await accessToken()}` },
+    headers: {
+      ...options.headers,
+      Authorization: `Bearer ${await accessToken()}`
+    },
     signal: AbortSignal.timeout(60000),
   });
+
   if (!response.ok) {
-    if (response.status === 401) { token = undefined; expiresAt = 0; }
-    throw fail('Google Drive request failed. Check account access, storage, and folder settings.');
+    const errorBody = await response.text();
+
+    console.error('========================================');
+    console.error('GOOGLE DRIVE API ERROR');
+    console.error('Status:', response.status);
+    console.error('Response:', errorBody);
+    console.error('URL:', url);
+    console.error('========================================');
+
+    if (response.status === 401) {
+      token = undefined;
+      expiresAt = 0;
+    }
+
+    throw fail(
+      'Google Drive request failed. Check account access, storage, and folder settings.'
+    );
   }
+
   return response;
 }
 
