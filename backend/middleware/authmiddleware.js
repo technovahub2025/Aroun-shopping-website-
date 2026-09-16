@@ -22,6 +22,12 @@ exports.protect = async (req, res, next) => {
     }
 
     // 3️⃣ Fetch user from DB
+    if (decoded.id === 'static-admin' && decoded.role === 'admin') {
+      req.user = { _id: 'static-admin', phone: decoded.phone, role: 'admin', firstName: 'Admin' };
+      req.phone = req.user.phone;
+      return next();
+    }
+
     const user = await User.findById(decoded.id).select('-password -otp -otpExpire');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
