@@ -1,57 +1,116 @@
 const Product = require("../models/productModel");
-const cloudinary = require("../utils/cloudinary");
-
 const drive = require("../utils/googleDrive");
 
+// Upload product images to Google Drive
 const uploadProductImages = async (req, uploadedDriveIds) => {
   const files = req.files || [];
-  const provider = req.body.imageStorage || 'cloudinary';
-  if (!['google-drive', 'cloudinary'].includes(provider)) {
-    throw Object.assign(new Error('Unknown image storage provider.'), { status: 400, expose: true });
-  }
+
+  // Validate every uploaded file
   files.forEach(drive.validateImage);
-  let urls;
-  if (provider === 'google-drive') {
-    urls = [];
-    for (const file of files) {
-      const image = await drive.uploadImage(file);
-      uploadedDriveIds.push(image.id);
-      urls.push(image.url);
-    }
-  } else {
-    urls = await uploadImages(files);
+
+  const urls = [];
+
+  for (const file of files) {
+    const image = await drive.uploadImage(file);
+
+    uploadedDriveIds.push(image.id);
+    urls.push(image.url);
   }
-  // Preserve the interleaved order of existing URLs and newly selected files.
+
+  // Preserve the interleaved order of existing URLs and newly uploaded files.
   if (req.body.imageOrder !== undefined) {
     let order;
-    try { order = JSON.parse(req.body.imageOrder); } catch { order = null; }
-    if (!Array.isArray(order) || order.some((item) =>
-      !(item && ((item.type === 'file' && Number.isInteger(item.index) && urls[item.index]) ||
-        (item.type === 'url' && typeof item.url === 'string' && /^https?:\/\//.test(item.url)))))) {
-      throw Object.assign(new Error('Invalid image order.'), { status: 400, expose: true });
+
+    try {
+      order = JSON.parse(req.body.imageOrder);
+    } catch {
+      order = null;
     }
-    return order.map((item) => item.type === 'file' ? urls[item.index] : item.url);
+
+    if (
+      !Array.isArray(order) ||
+      order.some(
+        (item) =>
+          !(
+            item &&
+            (
+              (
+                item.type === "file" &&
+                Number.isInteger(item.index) &&
+                urls[item.index]
+              ) ||
+              (
+                item.type === "url" &&
+                typeof item.url === "string" &&
+                /^https?:\/\//.test(item.url)
+              )
+            )
+          )
+      )
+    ) {
+      throw Object.assign(
+        new Error("Invalid image order."),
+        {
+          status: 400,
+          expose: true,
+        }
+      );
+    }
+
+    return order.map((item) =>
+      item.type === "file"
+        ? urls[item.index]
+        : item.url
+    );
   }
+
   return [...collectImageUrls(req.body), ...urls];
 };
 
+// Delete Drive images when something fails
 const cleanupDriveImages = async (ids) => {
-  const results = await Promise.allSettled(ids.map(drive.deleteImage));
-  if (results.some((result) => result.status === 'rejected')) {
-    console.error('Could not clean up some unsaved Google Drive images.');
+  if (!ids.length) return;
+
+  const results = await Promise.allSettled(
+    ids.map((id) => drive.deleteImage(id))
+  );
+
+  if (
+    results.some(
+      (result) => result.status === "rejected"
+    )
+  ) {
+    console.error(
+      "Could not clean up some unsaved Google Drive images."
+    );
   }
 };
 
 const toNumber = (value, fallback = undefined) => {
-  if (value === undefined || value === null || value === "") return fallback;
-  const parsed = Number(String(value).replace(/,/g, ""));
-  return Number.isFinite(parsed) ? parsed : fallback;
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return fallback;
+  }
+
+  const parsed = Number(
+    String(value).replace(/,/g, "")
+  );
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : fallback;
 };
 
 const parseListField = (value) => {
   if (!value) return [];
+
   if (Array.isArray(value)) {
-    return value.flatMap((item) => parseListField(item));
+    return value.flatMap((item) =>
+      parseListField(item)
+    );
   }
 
   return String(value)
@@ -61,34 +120,29 @@ const parseListField = (value) => {
 };
 
 const collectImageUrls = (body) => {
-  const existing = parseListField(body.existingImages);
-  const inlineUrls = parseListField(body.imageUrls);
-  const directImages = parseListField(body.images);
-
-  return [...existing, ...inlineUrls, ...directImages];
-};
-
-// Helper function to upload multiple images
-const uploadImages = async (files) => {
-  return Promise.all(
-    files.map(
-      (file) =>
-        new Promise((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            { folder: "products" },
-            (error, result) => {
-              if (error) return reject(error);
-              resolve(result.secure_url);
-            }
-          ).end(file.buffer);
-        })
-    )
+  const existing = parseListField(
+    body.existingImages
   );
+
+  const inlineUrls = parseListField(
+    body.imageUrls
+  );
+
+  const directImages = parseListField(
+    body.images
+  );
+
+  return [
+    ...existing,
+    ...inlineUrls,
+    ...directImages,
+  ];
 };
 
 // CREATE Product
 exports.createProduct = async (req, res) => {
   const uploadedDriveIds = [];
+
   try {
     const {
       title,
@@ -102,7 +156,11 @@ exports.createProduct = async (req, res) => {
       type,
     } = req.body;
 
-    const imageUrls = await uploadProductImages(req, uploadedDriveIds);
+    // Upload images directly to Google Drive
+    const imageUrls = await uploadProductImages(
+      req,
+      uploadedDriveIds
+    );
 
     const product = await Product.create({
       title,
@@ -119,42 +177,76 @@ exports.createProduct = async (req, res) => {
 
     res.status(201).json(product);
   } catch (err) {
-    console.error("Error creating product:", err);
-    await cleanupDriveImages(uploadedDriveIds);
-    res.status(err.status || 500).json({ message: err.expose ? err.message : "Failed to create product" });
+    console.error(
+      "Error creating product:",
+      err
+    );
+
+    await cleanupDriveImages(
+      uploadedDriveIds
+    );
+
+    res.status(err.status || 500).json({
+      message: err.expose
+        ? err.message
+        : "Failed to create product",
+    });
   }
 };
 
-// READ All Products (with optional category filter)
+// READ All Products
 exports.getProducts = async (req, res) => {
   try {
     const { category } = req.query;
-    const query = category ? { category } : {};
+
+    const query = category
+      ? { category }
+      : {};
+
     const products = await Product.find(query);
+
     res.json(products);
   } catch (err) {
-    console.error("Error fetching products:", err);
-    res.status(500).json({ message: "Failed to fetch products" });
+    console.error(
+      "Error fetching products:",
+      err
+    );
+
+    res.status(500).json({
+      message: "Failed to fetch products",
+    });
   }
 };
 
 // READ Single Product
 exports.getProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product =
+      await Product.findById(req.params.id);
+
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({
+        message: "Product not found",
+      });
     }
+
     res.json(product);
   } catch (err) {
-    console.error("Error fetching product:", err);
-    res.status(500).json({ message: "Failed to fetch product" });
+    console.error(
+      "Error fetching product:",
+      err
+    );
+
+    res.status(500).json({
+      message: "Failed to fetch product",
+    });
   }
 };
 
 // UPDATE Product
 exports.updateProduct = async (req, res) => {
   const uploadedDriveIds = [];
+
   try {
     const {
       title,
@@ -168,56 +260,251 @@ exports.updateProduct = async (req, res) => {
       type,
     } = req.body;
 
-    const product = await Product.findById(req.params.id);
+    const product =
+      await Product.findById(req.params.id);
+
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({
+        message: "Product not found",
+      });
     }
 
-    if (title !== undefined) product.title = title;
-    if (description !== undefined) product.description = description;
-    if (price !== undefined && price !== "") {
-      product.price = toNumber(price, product.price);
-    }
-    if (rating !== undefined && rating !== "") {
-      product.rating = toNumber(rating, product.rating);
-    }
-    if (category !== undefined) product.category = category;
-    if (type !== undefined) product.type = type;
-    if (mrp !== undefined && mrp !== "") {
-      product.mrp = toNumber(mrp, product.mrp);
-    }
-    if (discount !== undefined && discount !== "") {
-      product.discount = toNumber(discount, product.discount);
-    }
-    if (stock !== undefined && stock !== "") {
-      product.stock = toNumber(stock, product.stock);
+    if (title !== undefined) {
+      product.title = title;
     }
 
-    const images = await uploadProductImages(req, uploadedDriveIds);
-    if (req.body.imageOrder !== undefined || images.length > 0) {
+    if (description !== undefined) {
+      product.description = description;
+    }
+
+    if (
+      price !== undefined &&
+      price !== ""
+    ) {
+      product.price = toNumber(
+        price,
+        product.price
+      );
+    }
+
+    if (
+      rating !== undefined &&
+      rating !== ""
+    ) {
+      product.rating = toNumber(
+        rating,
+        product.rating
+      );
+    }
+
+    if (category !== undefined) {
+      product.category = category;
+    }
+
+    if (type !== undefined) {
+      product.type = type;
+    }
+
+    if (
+      mrp !== undefined &&
+      mrp !== ""
+    ) {
+      product.mrp = toNumber(
+        mrp,
+        product.mrp
+      );
+    }
+
+    if (
+      discount !== undefined &&
+      discount !== ""
+    ) {
+      product.discount = toNumber(
+        discount,
+        product.discount
+      );
+    }
+
+    if (
+      stock !== undefined &&
+      stock !== ""
+    ) {
+      product.stock = toNumber(
+        stock,
+        product.stock
+      );
+    }
+
+    const oldImages = Array.isArray(
+      product.images
+    )
+      ? [...product.images]
+      : [];
+
+    const images =
+      await uploadProductImages(
+        req,
+        uploadedDriveIds
+      );
+
+    if (
+      req.body.imageOrder !== undefined ||
+      images.length > 0
+    ) {
       product.images = images;
     }
 
     await product.save();
+
+    // Delete old Drive images only after
+    // the new product data was successfully saved.
+    if (
+      req.body.imageOrder !== undefined ||
+      uploadedDriveIds.length > 0
+    ) {
+      await deleteDriveImagesFromUrls(
+        oldImages,
+        product.images
+      );
+    }
+
     res.json(product);
   } catch (err) {
-    console.error("Error updating product:", err);
-    await cleanupDriveImages(uploadedDriveIds);
-    res.status(err.status || 500).json({ message: err.expose ? err.message : "Failed to update product" });
+    console.error(
+      "Error updating product:",
+      err
+    );
+
+    await cleanupDriveImages(
+      uploadedDriveIds
+    );
+
+    res.status(err.status || 500).json({
+      message: err.expose
+        ? err.message
+        : "Failed to update product",
+    });
   }
+};
+
+// Extract Drive file ID from our generated URL
+const getDriveIdFromUrl = (url) => {
+  if (
+    typeof url !== "string" ||
+    !url.includes("/api/drive-images/")
+  ) {
+    return null;
+  }
+
+  const match = url.match(
+    /\/api\/drive-images\/([a-zA-Z0-9_-]+)/
+  );
+
+  return match ? match[1] : null;
+};
+
+// Delete Drive images that are no longer used
+const deleteDriveImagesFromUrls = async (
+  oldImages,
+  newImages
+) => {
+  const oldIds = oldImages
+    .map(getDriveIdFromUrl)
+    .filter(Boolean);
+
+  const newIds = new Set(
+    newImages
+      .map(getDriveIdFromUrl)
+      .filter(Boolean)
+  );
+
+  const idsToDelete = oldIds.filter(
+    (id) => !newIds.has(id)
+  );
+
+  if (!idsToDelete.length) return;
+
+  const results = await Promise.allSettled(
+    idsToDelete.map((id) =>
+      drive.deleteImage(id)
+    )
+  );
+
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(
+        `Failed to delete Drive image ${idsToDelete[index]}:`,
+        result.reason
+      );
+    }
+  });
 };
 
 // DELETE Product
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product =
+      await Product.findById(
+        req.params.id
+      );
+
     if (!product) {
-      return res.status(404).json({ message: "Product not found" });
+      return res.status(404).json({
+        message: "Product not found",
+      });
     }
 
-    res.json({ message: "Product deleted successfully" });
+    // Get Drive IDs before deleting product
+    const driveIds = (
+      Array.isArray(product.images)
+        ? product.images
+        : []
+    )
+      .map(getDriveIdFromUrl)
+      .filter(Boolean);
+
+    // Delete product from MongoDB
+    await Product.findByIdAndDelete(
+      req.params.id
+    );
+
+    // Delete associated Drive images
+    if (driveIds.length) {
+      const results =
+        await Promise.allSettled(
+          driveIds.map((id) =>
+            drive.deleteImage(id)
+          )
+        );
+
+      results.forEach(
+        (result, index) => {
+          if (
+            result.status ===
+            "rejected"
+          ) {
+            console.error(
+              `Failed to delete Drive image ${driveIds[index]}:`,
+              result.reason
+            );
+          }
+        }
+      );
+    }
+
+    res.json({
+      message:
+        "Product deleted successfully",
+    });
   } catch (err) {
-    console.error("Error deleting product:", err);
-    res.status(500).json({ message: "Failed to delete product" });
+    console.error(
+      "Error deleting product:",
+      err
+    );
+
+    res.status(500).json({
+      message:
+        "Failed to delete product",
+    });
   }
 };

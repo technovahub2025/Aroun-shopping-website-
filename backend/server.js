@@ -10,6 +10,7 @@ const orderRoutes = require('./routes/orderRoute');
 const userRoutes = require('./routes/userRoute');
 const paymentRoutes = require('./routes/paymentRoute');
 const notificationRoutes = require('./routes/notificationRoute');
+const googleDriveRoutes = require('./routes/googleDriveRoute');
 const { checkAndNotifyLowStock } = require('./controllers/notificationController');
 
 require('dotenv').config();
@@ -25,7 +26,7 @@ app.use(cors({
 }));
 
 // Connect DB
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URL)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
@@ -38,6 +39,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/google-drive', googleDriveRoutes);
 
 // Check for low stock products every hour
 setInterval(checkAndNotifyLowStock, 60 * 60 * 1000);

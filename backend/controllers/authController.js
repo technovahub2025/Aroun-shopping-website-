@@ -67,6 +67,7 @@ const bcrypt = require("bcryptjs");
 const STATIC_ADMIN_PHONE = '9876543201';
 const STATIC_ADMIN_PASSWORD = 'admin123';
 const STATIC_ADMIN_ID = 'static-admin';
+const isStaticAdminPhone = (phone) => String(phone).replace(/\D/g, '').slice(-10) === STATIC_ADMIN_PHONE;
 
 const setAuthCookie = (res, token) => {
   res.cookie('token', token, {
@@ -319,7 +320,7 @@ exports.loginWithPassword = async (req, res) => {
       return res.status(400).json({ message: "Phone & password required" });
     }
 
-    if (phone === STATIC_ADMIN_PHONE && password === STATIC_ADMIN_PASSWORD) {
+    if (isStaticAdminPhone(phone) && password === STATIC_ADMIN_PASSWORD) {
       const adminUser = { _id: STATIC_ADMIN_ID, phone: STATIC_ADMIN_PHONE, role: 'admin', firstName: 'Admin' };
       const token = generateToken(adminUser);
       setAuthCookie(res, token);
