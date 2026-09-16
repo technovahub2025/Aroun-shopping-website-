@@ -64,7 +64,7 @@ const { sendOTP, verifyOTP } = require('../utils/twilio');
 const generateToken = require('../utils/jwt');
 const bcrypt = require("bcryptjs");
 
-const STATIC_ADMIN_PHONE = '+919876543201';
+const STATIC_ADMIN_PHONE = '9876543201';
 const STATIC_ADMIN_PASSWORD = 'admin123';
 const STATIC_ADMIN_ID = 'static-admin';
 // New Indian phone numbers use E.164; legacy 10-digit records remain supported.
@@ -83,7 +83,8 @@ const phoneVariants = (phone) => {
 };
 
 const findUserByPhone = (phone) => User.findOne({ phone: { $in: phoneVariants(phone) } });
-const isStaticAdminPhone = (phone) => normalizeIndianPhone(phone) === STATIC_ADMIN_PHONE;
+// Match both the legacy 10-digit admin number and its normalized +91 form.
+const isStaticAdminPhone = (phone) => phoneVariants(phone).includes(STATIC_ADMIN_PHONE);
 
 const setAuthCookie = (res, token) => {
   res.cookie('token', token, {
