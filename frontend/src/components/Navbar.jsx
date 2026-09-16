@@ -645,7 +645,7 @@ const Navbar = () => {
                   >
                     Phone Number <span className="text-red-500">*</span>
                   </label>
-                  <div className="relative">
+                  <div className="relative flex">
                     <User
                       className={`absolute left-3 top-1/2 transform -translate-y-1/2 transition-all duration-300 ${
                         focusedField === "login-name"
