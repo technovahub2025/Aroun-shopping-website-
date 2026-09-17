@@ -41,6 +41,13 @@ const ProductList = () => {
 
   const selectedCategory = searchParams.get("category");
   const isAdmin = user?.role === "admin";
+  const categoryCounts = useMemo(() => {
+    const counts = new Map();
+    products.forEach(({ category }) => {
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+    return counts;
+  }, [products]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -306,6 +313,9 @@ const getPageNumbers = () => {
                           className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                         />
                         <span className="ml-2">{cat}</span>
+                        <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700" aria-label={`${categoryCounts.get(cat) || 0} products`}>
+                          {categoryCounts.get(cat) || 0}
+                        </span>
                       </label>
                       {isAdmin && (
                         <button
