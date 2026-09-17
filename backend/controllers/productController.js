@@ -218,6 +218,22 @@ exports.getProducts = async (req, res) => {
   }
 };
 
+// Count each product once, even when it references multiple Drive images.
+// This checks saved image URLs; it does not verify file availability in Drive.
+exports.getDriveImageProductCount = async (req, res) => {
+  try {
+    const totalProductsWithDriveImages = await Product.countDocuments({
+      images: {
+        $regex: /^(?:https?:\/\/[^/]+\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|https?:\/\/drive\.google\.com\/(?:file\/d\/[A-Za-z0-9_-]+|(?:uc|thumbnail|open)\?[^#]*\bid=[A-Za-z0-9_-]+))/,
+      },
+    });
+    res.json({ totalProductsWithDriveImages });
+  } catch (err) {
+    console.error("Error counting products with Drive images:", err);
+    res.status(500).json({ message: "Failed to count products with Drive images" });
+  }
+};
+
 // Count product listings (not stock units) in each category.
 exports.getCategoryCounts = async (req, res) => {
   try {
