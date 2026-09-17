@@ -107,9 +107,6 @@ const CategoriesCarousel = () => {
                 <h3 className="text-base md:text-lg font-semibold text-gray-800 mb-1">
                   {cat.name}
                 </h3>
-                <span className="inline-flex rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-                  {cat.items.length} {cat.items.length === 1 ? "product" : "products"}
-                </span>
 
                 <ul className="text-gray-600 text-xs md:text-sm mt-1 space-y-0.5 line-clamp-2">
                   {cat.items.slice(0, 3).map((item, idx) => (
