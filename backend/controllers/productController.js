@@ -218,6 +218,24 @@ exports.getProducts = async (req, res) => {
   }
 };
 
+// Count product listings (not stock units) in each category.
+exports.getCategoryCounts = async (req, res) => {
+  try {
+    const categories = await Product.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, category: "$_id", count: 1 } },
+    ]);
+    res.json({
+      categories,
+      total: categories.reduce((sum, row) => sum + row.count, 0),
+    });
+  } catch (err) {
+    console.error("Error fetching category counts:", err);
+    res.status(500).json({ message: "Failed to fetch category counts" });
+  }
+};
+
 // READ Single Product
 exports.getProduct = async (req, res) => {
   try {

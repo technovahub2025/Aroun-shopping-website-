@@ -23,6 +23,7 @@ import { useDropzone } from "react-dropzone";
 import { ReactSortable } from "react-sortablejs";
 import * as XLSX from "xlsx";
 import productApi from "../../../api/productApi";
+import CategoryCounts from "../../components/CategoryCounts";
 
 import { parseProductSheet } from "../../utils/productImport";
 
@@ -550,6 +551,8 @@ const Products = () => {
           </p>
         </div>
       </div>
+
+      <CategoryCounts refreshKey={products} />
 
       <div className="space-y-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border p-4">

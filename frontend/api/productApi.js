@@ -71,6 +71,8 @@ const clearProductCache = () => {
 };
 
 const productApi = {
+  getCategoryCounts: (config = {}) => apiClient.get(`${BASE_URL}/category-counts`, config),
+
   // Get all products
   getAll: async (query, options = {}) => {
     const { forceRefresh = false } = options;
