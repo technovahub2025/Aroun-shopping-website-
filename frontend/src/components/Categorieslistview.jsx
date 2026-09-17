@@ -64,9 +64,6 @@ const CategoryListView = () => {
 
               <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-5">
                 {categoryName}
-                <span className="ml-3 inline-flex rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-700 align-middle">
-                  {products.length} {products.length === 1 ? "product" : "products"}
-                </span>
               </h2>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
