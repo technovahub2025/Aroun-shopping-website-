@@ -370,6 +370,8 @@ const getPageNumbers = () => {
                     <img
                       src={product.images?.[0] || "/placeholder.png"}
                       alt={product.title}
+                      loading="lazy"
+                      decoding="async"
                       className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>

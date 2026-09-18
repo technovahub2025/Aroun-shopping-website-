@@ -21,30 +21,34 @@ import {
 import { toast } from "react-toastify";
 import { useDropzone } from "react-dropzone";
 import { ReactSortable } from "react-sortablejs";
-import * as XLSX from "xlsx";
 import productApi from "../../../api/productApi";
 
 import { parseProductSheet } from "../../utils/productImport";
 
-const downloadTemplate = () => {
-  const workbook = XLSX.utils.book_new();
-  const worksheet = XLSX.utils.json_to_sheet([
-    {
-      title: "Sample Product",
-      description: "Short product description",
-      category: "Demo Category",
-      type: "Demo Type",
-      price: 499,
-      mrp: 699,
-      stock: 25,
-      rating: 4.5,
-      discount: 10,
-      imageUrls: "https://example.com/product-image.jpg",
-    },
-  ]);
+const downloadTemplate = async () => {
+  try {
+    const XLSX = await import("xlsx");
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet([
+      {
+        title: "Sample Product",
+        description: "Short product description",
+        category: "Demo Category",
+        type: "Demo Type",
+        price: 499,
+        mrp: 699,
+        stock: 25,
+        rating: 4.5,
+        discount: 10,
+        imageUrls: "https://example.com/product-image.jpg",
+      },
+    ]);
 
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
-  XLSX.writeFile(workbook, "product-import-template.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
+    XLSX.writeFile(workbook, "product-import-template.xlsx");
+  } catch {
+    toast.error("Could not download the Excel template. Please try again.");
+  }
 };
 
 const fieldOrder = [
@@ -58,7 +62,7 @@ const fieldOrder = [
 ];
 
 const Products = () => {
-  const cachedProducts = productApi.getCachedAll() || [];
+  const [cachedProducts] = useState(() => productApi.getCachedAll() || []);
   const [products, setProducts] = useState(cachedProducts);
   const [loading, setLoading] = useState(cachedProducts.length === 0);
   const [showModal, setShowModal] = useState(false);
@@ -114,7 +118,7 @@ const Products = () => {
   };
 
   useEffect(() => {
-    productApi.prefetchDeleted?.();
+    let active = true;
     const fetchProducts = async () => {
       try {
         if (cachedProducts.length === 0) {
@@ -124,16 +128,17 @@ const Products = () => {
         const res = await productApi.getAll(undefined, {
           forceRefresh: cachedProducts.length > 0,
         });
-        setProducts(Array.isArray(res.data) ? res.data : []);
+        if (active) setProducts(Array.isArray(res.data) ? res.data : []);
       } catch {
-        toast.error("Failed to fetch products");
+        if (active) toast.error("Failed to fetch products");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchProducts();
-  }, [cachedProducts.length]);
+    return () => { active = false; };
+  }, [cachedProducts]);
 
   useEffect(() => {
     if (!showModal) return undefined;
@@ -328,6 +333,7 @@ const Products = () => {
 
     setParsingExcel(true);
     try {
+      const XLSX = await import("xlsx");
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheetName = workbook.SheetNames[0];
@@ -731,10 +737,10 @@ const Products = () => {
                     <td className="px-4 py-3 min-w-64">
                       <div className="flex gap-2 flex-wrap mb-2">
                         {row.images.map((url, index) => <div key={index}>
-                          <img src={url} alt={row.title} className="w-12 h-12 object-cover rounded" />
+                          <img src={url} alt={row.title} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />
                           <button type="button" disabled={importing} onClick={() => updateImportRow(row.rowNumber, { images: row.images.filter((_, i) => i !== index) })}>Remove</button>
                         </div>)}
-                        {row.imageFiles.map(image => <img key={image.url} src={image.url} alt={image.file.name} className="w-12 h-12 object-cover rounded" />)}
+                        {row.imageFiles.map(image => <img key={image.url} src={image.url} alt={image.file.name} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />)}
                       </div>
                       <input aria-label={'Images for ' + row.title} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={importing} onChange={event => { selectImportImages(row, event.target.files); event.target.value = ""; }} className="max-w-64 text-xs" />
                       {row.imageFiles.length > 0 && <button type="button" disabled={importing} className="block text-xs mt-2 text-red-600" onClick={() => selectImportImages(row, [])}>Clear selected images</button>}
@@ -831,6 +837,10 @@ const Products = () => {
                           : "/placeholder.png"
                       }
                       alt={product.title}
+                      loading="lazy"
+                      decoding="async"
+                      width={56}
+                      height={56}
                       className="w-14 h-14 object-cover rounded-md"
                     />
                   </td>
@@ -1188,6 +1198,10 @@ const Products = () => {
                       <img
                         src={img.preview}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
+                        width={96}
+                        height={96}
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 flex items-center justify-center text-xs text-white opacity-0 group-hover:opacity-100 transition">
