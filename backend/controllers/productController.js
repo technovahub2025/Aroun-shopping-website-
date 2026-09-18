@@ -227,17 +227,34 @@ exports.getDriveImageProductCount = async (req, res) => {
         $regex: /^(?:https?:\/\/[^/]+\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|https?:\/\/drive\.google\.com\/(?:file\/d\/[A-Za-z0-9_-]+|(?:uc|thumbnail|open)\?[^#]*\bid=[A-Za-z0-9_-]+))/,
       },
     };
-    const [totalProducts, totalProductsWithDriveImages] = await Promise.all([
-      Product.countDocuments({}),
+    const [totalProductsWithDriveImages, pendingProducts] = await Promise.all([
       Product.countDocuments(driveImageFilter),
+      Product.find({ $nor: [driveImageFilter] })
+        .select("_id title category")
+        .sort({ category: 1, title: 1, _id: 1 })
+        .lean(),
     ]);
-    const remainingProducts = Math.max(0, totalProducts - totalProductsWithDriveImages);
+    const remainingProducts = pendingProducts.length;
+    const totalProducts = totalProductsWithDriveImages + remainingProducts;
+    const categoryMap = new Map();
+    for (const product of pendingProducts) {
+      const category = product.category || "Uncategorized";
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, { category, count: 0, products: [] });
+      }
+      const group = categoryMap.get(category);
+      group.count += 1;
+      group.products.push({ _id: product._id, title: product.title });
+    }
+    const pendingCategories = [...categoryMap.values()]
+      .sort((a, b) => a.category.localeCompare(b.category));
     const completed = remainingProducts === 0;
 
     res.json({
       totalProducts,
       totalProductsWithDriveImages,
       remainingProducts,
+      pendingCategories,
       status: completed ? "completed" : "pending",
       message: completed
         ? "completed"
