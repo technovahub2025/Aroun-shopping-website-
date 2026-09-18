@@ -222,12 +222,27 @@ exports.getProducts = async (req, res) => {
 // This checks saved image URLs; it does not verify file availability in Drive.
 exports.getDriveImageProductCount = async (req, res) => {
   try {
-    const totalProductsWithDriveImages = await Product.countDocuments({
+    const driveImageFilter = {
       images: {
         $regex: /^(?:https?:\/\/[^/]+\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|https?:\/\/drive\.google\.com\/(?:file\/d\/[A-Za-z0-9_-]+|(?:uc|thumbnail|open)\?[^#]*\bid=[A-Za-z0-9_-]+))/,
       },
+    };
+    const [totalProducts, totalProductsWithDriveImages] = await Promise.all([
+      Product.countDocuments({}),
+      Product.countDocuments(driveImageFilter),
+    ]);
+    const remainingProducts = Math.max(0, totalProducts - totalProductsWithDriveImages);
+    const completed = remainingProducts === 0;
+
+    res.json({
+      totalProducts,
+      totalProductsWithDriveImages,
+      remainingProducts,
+      status: completed ? "completed" : "pending",
+      message: completed
+        ? "completed"
+        : `${remainingProducts} product${remainingProducts === 1 ? "" : "s"} need${remainingProducts === 1 ? "s" : ""} to complete`,
     });
-    res.json({ totalProductsWithDriveImages });
   } catch (err) {
     console.error("Error counting products with Drive images:", err);
     res.status(500).json({ message: "Failed to count products with Drive images" });
