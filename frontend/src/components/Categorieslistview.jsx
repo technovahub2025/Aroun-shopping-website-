@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import productApi from "../../api/productApi";
+import useCatalog from "../hooks/useCatalog";
 import { Loader2 } from "lucide-react";
 import Title from "./Title";
 
@@ -8,43 +8,12 @@ import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/blur.css";
 
 const CategoryListView = () => {
-  const [groupedCategories, setGroupedCategories] = useState({});
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchProducts = async () => {
-    try {
-      const res = await productApi.getAll();
-
-      let newProducts = res.data;
-
-      if (!Array.isArray(newProducts)) {
-        newProducts = newProducts?.products || [];
-      }
-
-      setProducts(newProducts);
-
-      const grouped = newProducts.reduce((acc, product) => {
-        const categoryName = product.category || "Uncategorized";
-
-        if (!acc[categoryName]) acc[categoryName] = [];
-
-        acc[categoryName].push(product);
-
-        return acc;
-      }, {});
-
-      setGroupedCategories(grouped);
-    } catch (err) {
-      console.error("Error fetching products:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+  const { products, loading } = useCatalog();
+  const groupedCategories = useMemo(() => products.reduce((groups, product) => {
+    const category = product.category || "Uncategorized";
+    (groups[category] ||= []).push(product);
+    return groups;
+  }, {}), [products]);
 
   return (
     <div className="px-4 md:px-10 py-8 max-w-7xl mx-auto">

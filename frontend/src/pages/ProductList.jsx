@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
+import useCatalog from "../hooks/useCatalog";
 import apiClient from "../../api/apiClient";
 import {
   FaStar,
@@ -18,11 +19,9 @@ import { setUser } from "../redux/userSlice";
 const ProductList = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user.user);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [availableCategories, setAvailableCategories] = useState([]);
-  const [availableTypes, setAvailableTypes] = useState([]);
+  const { products, setProducts, loading, error, setError } = useCatalog();
+  const availableCategories = useMemo(() => Array.from(new Set(products.map(p => p.category).filter(Boolean))), [products]);
+  const availableTypes = useMemo(() => Array.from(new Set(products.map(p => p.type).filter(Boolean))), [products]);
   const [categoryFilters, setCategoryFilters] = useState([]);
   const [typeFilters, setTypeFilters] = useState([]);
   const [sortBy, setSortBy] = useState("Relevant");
@@ -65,29 +64,8 @@ const ProductList = () => {
   }, [dispatch, user]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await productApi.getAll();
-        const data = res.data || [];
-
-        setProducts(data);
-
-        setAvailableCategories(
-          Array.from(new Set(data.map((p) => p.category).filter(Boolean)))
-        );
-
-        setAvailableTypes(
-          Array.from(new Set(data.map((p) => p.type).filter(Boolean)))
-        );
-
-        if (selectedCategory) setCategoryFilters([selectedCategory]);
-      } catch (err) {
-        setError(err.response?.data?.message || err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    setCategoryFilters(selectedCategory ? [selectedCategory] : []);
+    setCurrentPage(1);
   }, [selectedCategory]);
 
   useEffect(() => {
@@ -120,7 +98,6 @@ const ProductList = () => {
       await productApi.deleteCategory(category);
 
       setProducts((prev) => prev.filter((p) => p.category !== category));
-      setAvailableCategories((prev) => prev.filter((cat) => cat !== category));
       setCategoryFilters((prev) => prev.filter((cat) => cat !== category));
       setCurrentPage(1);
     } catch (err) {

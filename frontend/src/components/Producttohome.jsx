@@ -1,54 +1,17 @@
 
 
 
-import React, { useEffect, useState } from "react";
-import productApi from "../../api/productApi";
+import React, { useState } from "react";
+import useCatalog from "../hooks/useCatalog";
 import { Link } from "react-router-dom";
 import { FaStar, FaStarHalfAlt, FaRegStar } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Title from "./Title";
 
 const Producttohome = () => {
-  const [products, setProducts] = useState([]);
+  const { products, loading, error } = useCatalog();
   const [visibleCount, setVisibleCount] = useState(8); // initially show 8
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState(""); // category filter
-
-  const normalizeProducts = (payload) => {
-    if (Array.isArray(payload)) return payload;
-    if (Array.isArray(payload?.products)) return payload.products;
-    if (Array.isArray(payload?.data)) return payload.data;
-    return [];
-  };
-
-  // Fetch all products
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await productApi.getAll();
-        let data = response.data;
-
-        // Normalize response shape
-        if (!Array.isArray(data)) {
-          data = data?.products || [];
-        }
-
-        if (!Array.isArray(data)) {
-          console.error("Expected products to be an array, got:", data);
-          setProducts([]);
-          return;
-        }
-
-        setProducts(data);
-      } catch (error) {
-        console.error("Failed to fetch products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProducts();
-  }, []);
 
   // Rating stars helper
   const renderStars = (rating = 0) => {
@@ -79,11 +42,7 @@ const Producttohome = () => {
 
   // Load more handler
   const handleLoadMore = () => {
-    setLoadingMore(true);
-    setTimeout(() => {
-      setVisibleCount((prev) => prev + 8);
-      setLoadingMore(false);
-    }, 1000);
+    setVisibleCount((prev) => prev + 8);
   };
 
   // Main loading state
@@ -99,7 +58,7 @@ const Producttohome = () => {
   if (!Array.isArray(products) || products.length === 0)
     return (
       <div className="flex justify-center items-center h-64">
-        <p className="text-gray-500 text-lg">No products available right now.</p>
+        <p className="text-gray-500 text-lg">{error ? "Could not load products. Please refresh to try again." : "No products available right now."}</p>
       </div>
     );
 
@@ -143,7 +102,7 @@ const Producttohome = () => {
                   product.image ||
                   "/placeholder.jpg"
                 }
-                alt={product.name || "product image"}
+                alt={product.title || product.name || "product image"}
                 loading="lazy"
                 className="w-full md:h-[50vh] object-cover rounded-xl"
               />
@@ -151,7 +110,7 @@ const Producttohome = () => {
 
             <div className="flex-1 flex flex-col mt-4">
               <h2 className="text-lg font-semibold text-gray-800 line-clamp-1">
-                {product.name}
+                {product.title || product.name}
               </h2>
 
               {product.category && (
@@ -208,16 +167,9 @@ const Producttohome = () => {
         <div className="flex justify-center mt-10">
           <button
             onClick={handleLoadMore}
-            disabled={loadingMore}
             className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition disabled:opacity-60"
           >
-            {loadingMore ? (
-              <>
-                <Loader2 className="animate-spin w-5 h-5" /> Loading...
-              </>
-            ) : (
-              "Load More"
-            )}
+            Load More
           </button>
         </div>
       )}

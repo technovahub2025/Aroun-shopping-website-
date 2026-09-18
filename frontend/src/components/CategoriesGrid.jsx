@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
-import productApi from "../../api/productApi";
+import useCatalog from "../hooks/useCatalog";
 import Title from "./Title";
 
 const gradientPalette = [
@@ -16,20 +16,9 @@ const gradientPalette = [
 ];
 
 const CategoriesCarousel = () => {
-  const [categories, setCategories] = useState([]);
+  const { products } = useCatalog();
   const navigate = useNavigate();
-
-  const fetchProducts = async () => {
-    try {
-      const res = await productApi.getAll();
-      let products = res.data;
-
-      if (!Array.isArray(products)) {
-        products = products?.products || [];
-      }
-
-      if (products.length === 0) return;
-
+  const categories = useMemo(() => {
       const categoryMap = {};
 
       products.forEach((p) => {
@@ -54,15 +43,8 @@ const CategoriesCarousel = () => {
         }
       });
 
-      setCategories(Object.values(categoryMap));
-    } catch (error) {
-      console.error("Failed to load categories:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
+    return Object.values(categoryMap);
+  }, [products]);
 
   const handleViewMore = (catName) => {
     navigate(`/product?category=${encodeURIComponent(catName)}`);
