@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
@@ -41,7 +42,7 @@ const ProductList = () => {
   const isAdmin = user?.role === "admin";
   const sortNames = { Relevant: 'relevant', 'Price: Low to High': 'price-asc', 'Price: High to Low': 'price-desc', Newest: 'newest' };
   const page = useCatalogPagination(productApi.getCatalogBatch, {
-    limit: 20, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
+    limit: 40, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
   });
   const { items: currentProducts, loading, setError, reload } = page;
   const facets = useCatalogFacets();
@@ -264,7 +265,7 @@ const ProductList = () => {
                 >
                   <div className="relative bg-gray-50 flex items-center justify-center aspect-[4/3] overflow-hidden">
                     <img
-                      src={product.images?.[0] || "/placeholder.png"}
+                      src={resolveImageUrl(product.images?.[0] || "/placeholder.png")}
                       alt={product.title}
                       loading="lazy"
                       decoding="async"
