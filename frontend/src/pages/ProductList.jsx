@@ -39,10 +39,11 @@ const ProductList = () => {
   ];
 
   const selectedCategory = searchParams.get("category");
+  const search = searchParams.get("search")?.trim() || "";
   const isAdmin = user?.role === "admin";
   const sortNames = { Relevant: 'relevant', 'Price: Low to High': 'price-asc', 'Price: High to Low': 'price-desc', Newest: 'newest' };
   const page = useCatalogPagination(productApi.getCatalogBatch, {
-    limit: 60, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
+    limit: 60, search, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
   });
   const { items: currentProducts, loading, setError, reload } = page;
   const facets = useCatalogFacets();

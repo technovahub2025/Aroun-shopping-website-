@@ -27,9 +27,9 @@ const Hero = () => {
             </button>
             </Link>
            
-            <button className="bg-white border border-red-500 text-red-500 px-7 py-3 rounded-full font-semibold shadow hover:bg-red-100 transform hover:scale-105 transition">
+            <Link to="/product" className="bg-white border border-red-500 text-red-500 px-7 py-3 rounded-full font-semibold shadow hover:bg-red-100 transform hover:scale-105 transition">
               Learn More
-            </button>
+            </Link>
           </div>
 
           {/* Optional Badge */}

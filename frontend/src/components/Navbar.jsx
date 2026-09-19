@@ -55,7 +55,9 @@ const Navbar = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    console.log("Searching for:", searchTerm);
+    const query = searchTerm.trim();
+    navigate(query ? `/product?search=${encodeURIComponent(query)}` : "/product");
+    setMenuOpen(false);
   };
 
   useEffect(() => {
@@ -271,6 +273,8 @@ const Navbar = () => {
                   size={20}
                 />
               </button>
+
+
             </form>
           </div>
 

@@ -26,6 +26,14 @@ exports.getCatalog = async (req, res) => {
     const categories = listFilter(req.query.categories), types = listFilter(req.query.types);
     if (categories.length) query.category = { $in: categories };
     if (types.length) query.type = { $in: types };
+    const search = req.query.search || '';
+    if (typeof search !== 'string' || search.length > 200) throw invalid();
+    if (search.trim()) {
+      const literal = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$and = [{ $or: ['title', 'category', 'description'].map(field => ({
+        [field]: { $regex: literal, $options: 'i' },
+      })) }];
+    }
     const page = parsePage(req.query.page, req.query.cursor);
     if (page !== null) return res.json(await getProductPage(Product, query, sort, limit, page,
       '_id title description price mrp discount rating category type images createdAt stock'));

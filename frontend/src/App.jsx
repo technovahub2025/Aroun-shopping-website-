@@ -82,6 +82,14 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/profile/settings"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin Dashboard (with Sidebar Layout) */}
         <Route
@@ -135,4 +143,3 @@ const App = () => {
 };
 
 export default App;
-
