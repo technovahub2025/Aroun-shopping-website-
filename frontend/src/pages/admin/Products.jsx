@@ -21,7 +21,7 @@ import { useDropzone } from "react-dropzone";
 import { ReactSortable } from "react-sortablejs";
 import productApi from "../../../api/productApi";
 import useAdminProducts from "./useAdminProducts";
-import InfiniteRowsFooter from "./InfiniteRowsFooter";
+import AdminPagination from "./AdminPagination";
 
 import { parseProductSheet } from "../../utils/productImport";
 
@@ -67,7 +67,7 @@ const Products = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const { products, loading: fetching, loadingMore, hasMore, error, loadMore, reload } = useAdminProducts({ search: searchTerm });
+  const { products, loading: fetching, error, reload, retry, page, pageSize, setPageSize, hasNext, nextPage, previousPage } = useAdminProducts({ search: searchTerm });
   const loading = saving || fetching;
   const [importRows, setImportRows] = useState([]);
   const [importFileName, setImportFileName] = useState("");
@@ -463,7 +463,7 @@ const Products = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Product Management</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {currentItems.length} products loaded
+            Page {page} ? {currentItems.length} products
           </p>
         </div>
       </div>
@@ -777,8 +777,8 @@ const Products = () => {
         </table>
       </div>
 
-      <InfiniteRowsFooter shown={currentItems.length}
-        hasMore={hasMore} loadMore={loadMore} loading={loading} loadingMore={loadingMore} error={error} />
+      <AdminPagination shown={currentItems.length} page={page} pageSize={pageSize} setPageSize={setPageSize}
+        hasNext={hasNext} nextPage={nextPage} previousPage={previousPage} loading={loading} error={error} retry={retry} />
 
       {showModal && (
         <div

@@ -3,10 +3,10 @@ import { RotateCcw } from "lucide-react";
 import { toast } from "react-toastify";
 import productApi from "../../../api/productApi";
 import useAdminProducts from "./useAdminProducts";
-import InfiniteRowsFooter from "./InfiniteRowsFooter";
+import AdminPagination from "./AdminPagination";
 
 const DeletedProducts = () => {
-  const { products, loading, loadingMore, hasMore, error, loadMore, reload } = useAdminProducts({ deleted: true });
+  const { products, loading, error, reload, retry, page, pageSize, setPageSize, hasNext, nextPage, previousPage } = useAdminProducts({ deleted: true });
   const [restoringId, setRestoringId] = useState(null);
 
   const handleRestore = async (product) => {
@@ -103,8 +103,8 @@ const DeletedProducts = () => {
           </tbody>
         </table>
       </div>
-      <InfiniteRowsFooter shown={products.length}
-        hasMore={hasMore} loadMore={loadMore} loading={loading} loadingMore={loadingMore} error={error} />
+      <AdminPagination shown={products.length} page={page} pageSize={pageSize} setPageSize={setPageSize}
+        hasNext={hasNext} nextPage={nextPage} previousPage={previousPage} loading={loading} error={error} retry={retry} />
     </div>
   );
 };

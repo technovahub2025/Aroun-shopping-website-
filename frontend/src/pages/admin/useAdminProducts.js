@@ -1,68 +1,52 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import productApi from "../../../api/productApi";
 
 export default function useAdminProducts({ search = "", deleted = false } = {}) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [error, setError] = useState("");
+  const [pageSize, setPageSize] = useState(20);
   const [revision, setRevision] = useState(0);
-  const sessionRef = useRef(null);
+  const [attempt, setAttempt] = useState(0);
+  const filterKey = JSON.stringify([search, deleted, pageSize, revision]);
+  const [navigation, setNavigation] = useState({ key: filterKey, index: 0, cursors: [null] });
+  const current = navigation.key === filterKey ? navigation : { key: filterKey, index: 0, cursors: [null] };
+  if (navigation.key !== filterKey) setNavigation(current);
+  const requestKey = JSON.stringify({ search, deleted, limit: pageSize, cursor: current.cursors[current.index], revision, attempt, page: current.index });
+  const [result, setResult] = useState({ key: null, products: [], hasMore: false, nextCursor: null, error: "", pending: true });
+  const loading = result.key !== requestKey || result.pending;
+  const products = result.key === requestKey ? result.products : [];
+  const error = result.key === requestKey ? result.error : "";
   const reload = useCallback(() => setRevision(value => value + 1), []);
-  const loadMore = useCallback(() => sessionRef.current?.fetch(), []);
+  const retry = useCallback(() => setAttempt(value => value + 1), []);
 
   useEffect(() => {
     const controller = new AbortController();
-    const session = { busy: false, cursor: null, more: true, first: true };
-    setProducts([]);
-    setLoading(true);
-    setLoadingMore(false);
-    setHasMore(false);
-    setError("");
-    session.fetch = async () => {
-      if (session.busy || !session.more || controller.signal.aborted) return;
-      session.busy = true;
-      setError("");
-      if (session.first) setLoading(true);
-      else setLoadingMore(true);
+    const { search, deleted, limit, cursor } = JSON.parse(requestKey);
+    setResult({ key: requestKey, products: [], hasMore: false, nextCursor: null, error: "", pending: true });
+    const timer = setTimeout(async () => {
       try {
         const { data } = await productApi.getAdminBatch({
-          limit: 20, search: search.trim(), deleted,
-          ...(session.cursor ? { cursor: session.cursor } : {}),
+          limit, search: search.trim(), deleted, ...(cursor ? { cursor } : {}),
         }, { signal: controller.signal });
         if (controller.signal.aborted) return;
-        if (!Array.isArray(data.items) || (data.hasMore && !data.nextCursor)) {
-          throw new Error("Invalid product list response");
-        }
-        setProducts(previous => {
-          const seen = new Set(previous.map(product => product._id));
-          return [...previous, ...data.items.filter(product => !seen.has(product._id))];
-        });
-        session.cursor = data.nextCursor;
-        session.more = data.hasMore;
-        session.first = false;
-        setHasMore(data.hasMore);
+        if (!Array.isArray(data.items) || (data.hasMore && !data.nextCursor)) throw new Error("Invalid product list response");
+        setResult({ key: requestKey, products: data.items, hasMore: data.hasMore, nextCursor: data.nextCursor, error: "", pending: false });
       } catch (err) {
-        if (!controller.signal.aborted) {
-          setError(err.response?.data?.message || "Could not load products. Please retry.");
-        }
-      } finally {
-        session.busy = false;
-        if (!controller.signal.aborted) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
+        if (!controller.signal.aborted) setResult({ key: requestKey, products: [], hasMore: false, nextCursor: null,
+          error: err.response?.data?.message || "Could not load products. Please retry.", pending: false });
       }
-    };
-    sessionRef.current = session;
-    const timer = setTimeout(session.fetch, search ? 300 : 0);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-      sessionRef.current = null;
-    };
-  }, [search, deleted, revision]);
+    }, search ? 300 : 0);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [requestKey]);
 
-  return { products, loading, loadingMore, hasMore, error, loadMore, reload };
+  const nextPage = () => {
+    if (loading || error || !result.hasMore) return;
+    setNavigation({ key: filterKey, index: current.index + 1,
+      cursors: [...current.cursors.slice(0, current.index + 1), result.nextCursor] });
+  };
+  const previousPage = () => {
+    if (loading || current.index === 0) return;
+    setNavigation({ ...current, index: current.index - 1 });
+  };
+
+  return { products, loading, error, reload, retry, page: current.index + 1, pageSize, setPageSize,
+    hasNext: !loading && !error && result.hasMore, nextPage, previousPage };
 }
