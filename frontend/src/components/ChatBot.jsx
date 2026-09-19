@@ -69,7 +69,7 @@ const ChatBot = () => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition-all duration-200 z-50"
+        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 bg-green-500 text-white p-4 rounded-full shadow-lg hover:bg-green-600 transition-all duration-200 z-[60]"
       >
         <MessageCircle size={24} />
       </button>
@@ -77,8 +77,8 @@ const ChatBot = () => {
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 transition-all duration-200 ${isMinimized ? 'h-14' : 'h-[500px]'}`}>
-      <div className="bg-white rounded-lg shadow-2xl flex flex-col h-full w-[350px] border border-gray-200">
+    <div className={`fixed bottom-20 left-3 right-3 md:bottom-6 md:left-auto md:right-6 z-[60] transition-all duration-200 ${isMinimized ? 'h-14' : 'h-[min(70vh,500px)] md:h-[500px]'}`}>
+      <div className="bg-white rounded-lg shadow-2xl flex flex-col h-full w-full md:w-[350px] border border-gray-200">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b bg-green-500 text-white rounded-t-lg">
           <h3 className="font-semibold">Chat Support</h3>

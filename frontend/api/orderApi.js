@@ -63,6 +63,11 @@ const orderApi = {
     return response;
   },
   getById: (id) => apiClient.get(`${BASE}/${id}`),
+  cancel: async (id) => {
+    const response = await apiClient.patch(`${BASE}/${id}/cancel`);
+    clearOrderCache();
+    return response;
+  },
   listAll: async (options = {}) => {
     const { forceRefresh = false } = options;
     const cacheKey = `${CACHE_PREFIX}all`;

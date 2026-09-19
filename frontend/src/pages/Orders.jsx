@@ -10,6 +10,7 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [cancellingOrderId, setCancellingOrderId] = useState(null);
   const itemsPerPage = 10;
 
   const formatPrice = (value) =>
@@ -48,6 +49,20 @@ const Orders = () => {
     } catch (err) {
       console.error(err);
       toast.error('Failed to update order');
+    }
+  };
+
+  const handleCancelOrder = async (order) => {
+    if (!window.confirm('Cancel this order? This cannot be undone.')) return;
+    setCancellingOrderId(order._id);
+    try {
+      await orderApi.cancel(order._id);
+      toast.success('Order cancelled successfully');
+      fetchOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not cancel the order');
+    } finally {
+      setCancellingOrderId(null);
     }
   };
 
@@ -106,6 +121,16 @@ const Orders = () => {
                       ))}
                     </select>
                   </div>
+                )}
+                {user?.role !== 'admin' && ['created', 'processing'].includes(order.status) && (
+                  <button
+                    type="button"
+                    onClick={() => handleCancelOrder(order)}
+                    disabled={cancellingOrderId === order._id}
+                    className="rounded border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    {cancellingOrderId === order._id ? 'Cancelling...' : 'Cancel order'}
+                  </button>
                 )}
               </div>
             </div>

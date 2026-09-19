@@ -88,6 +88,24 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+// A customer may cancel only before the order has been handed to shipping.
+exports.cancelMyOrder = async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, user: req.user._id });
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+    if (!['created', 'processing'].includes(order.status)) {
+      return res.status(400).json({ message: 'Only new or processing orders can be cancelled' });
+    }
+
+    order.status = 'cancelled';
+    await order.save();
+    res.json(order);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to cancel order' });
+  }
+};
+
 // Update order status / payment
 exports.updateOrderStatus = async (req, res) => {
   try {
