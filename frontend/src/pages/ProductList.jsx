@@ -304,7 +304,7 @@ const ProductList = () => {
             {page.error} <button type="button" onClick={page.retry} disabled={loading} className="ml-2 underline">Retry</button>
           </div>}
           <div className="mt-8">
-            <p role="status" className="mb-3 text-center text-sm text-gray-600">Page {page.page} of {page.totalPages} ? 20 per page</p>
+            <p role="status" className="mb-3 text-center text-sm text-gray-600">Page {page.page} of {page.totalPages} &middot; 40 per page</p>
             <NumberedPagination page={page.page} totalPages={page.totalPages} loading={loading}
               onPageChange={value => { page.goToPage(value); listRef.current?.scrollIntoView({ block: 'start' }); }} />
           </div>
