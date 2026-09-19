@@ -1,4 +1,5 @@
 const Product = require('../models/productModel');
+const { parsePage, getProductPage } = require('../utils/productPagination');
 
 const invalid = () => Object.assign(new Error('Invalid catalog parameters'), { status: 400 });
 const batchLimit = (value = '20', max = 60) => {
@@ -25,6 +26,9 @@ exports.getCatalog = async (req, res) => {
     const categories = listFilter(req.query.categories), types = listFilter(req.query.types);
     if (categories.length) query.category = { $in: categories };
     if (types.length) query.type = { $in: types };
+    const page = parsePage(req.query.page, req.query.cursor);
+    if (page !== null) return res.json(await getProductPage(Product, query, sort, limit, page,
+      '_id title description price mrp discount rating category type images createdAt stock'));
     const field = Object.keys(sort)[0], comparison = sort[field] === 1 ? '$gt' : '$lt';
     if (req.query.cursor !== undefined) {
       if (typeof req.query.cursor !== 'string' || req.query.cursor.length > 1000) throw invalid();

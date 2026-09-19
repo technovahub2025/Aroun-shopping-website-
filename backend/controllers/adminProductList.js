@@ -1,4 +1,5 @@
 const Product = require('../models/productModel');
+const { parsePage, getProductPage } = require('../utils/productPagination');
 
 // Use the indexed _id cursor instead of skipping an ever-growing number of rows.
 module.exports = async (req, res) => {
@@ -17,6 +18,8 @@ module.exports = async (req, res) => {
     query.$or = ['title', 'category'].map(field => ({ [field]: { $regex: literal, $options: 'i' } }));
   }
   try {
+    const page = parsePage(req.query.page, cursor);
+    if (page !== null) return res.json(await getProductPage(Product, query, { _id: -1 }, batchSize, page));
     const rows = await Product.find(query).setOptions({ strictQuery: false })
       .sort({ _id: -1 }).limit(batchSize + 1).lean();
     const hasMore = rows.length > batchSize;
@@ -24,6 +27,6 @@ module.exports = async (req, res) => {
     return res.json({ items, hasMore, nextCursor: hasMore ? String(items.at(-1)._id) : null });
   } catch (error) {
     console.error('Failed to fetch admin products:', error);
-    return res.status(500).json({ message: 'Failed to fetch products' });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Failed to fetch products' });
   }
 };

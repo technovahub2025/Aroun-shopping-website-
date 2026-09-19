@@ -67,7 +67,7 @@ const Products = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const { products, loading: fetching, error, reload, retry, page, pageSize, setPageSize, hasNext, nextPage, previousPage } = useAdminProducts({ search: searchTerm });
+  const { products, loading: fetching, error, reload, retry, page, pageSize, setPageSize, totalPages, goToPage } = useAdminProducts({ search: searchTerm });
   const loading = saving || fetching;
   const [importRows, setImportRows] = useState([]);
   const [importFileName, setImportFileName] = useState("");
@@ -778,7 +778,7 @@ const Products = () => {
       </div>
 
       <AdminPagination shown={currentItems.length} page={page} pageSize={pageSize} setPageSize={setPageSize}
-        hasNext={hasNext} nextPage={nextPage} previousPage={previousPage} loading={loading} error={error} retry={retry} />
+        totalPages={totalPages} goToPage={goToPage} loading={loading} error={error} retry={retry} />
 
       {showModal && (
         <div

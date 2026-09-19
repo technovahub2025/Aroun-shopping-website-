@@ -6,7 +6,7 @@ import useAdminProducts from "./useAdminProducts";
 import AdminPagination from "./AdminPagination";
 
 const DeletedProducts = () => {
-  const { products, loading, error, reload, retry, page, pageSize, setPageSize, hasNext, nextPage, previousPage } = useAdminProducts({ deleted: true });
+  const { products, loading, error, reload, retry, page, pageSize, setPageSize, totalPages, goToPage } = useAdminProducts({ deleted: true });
   const [restoringId, setRestoringId] = useState(null);
 
   const handleRestore = async (product) => {
@@ -104,7 +104,7 @@ const DeletedProducts = () => {
         </table>
       </div>
       <AdminPagination shown={products.length} page={page} pageSize={pageSize} setPageSize={setPageSize}
-        hasNext={hasNext} nextPage={nextPage} previousPage={previousPage} loading={loading} error={error} retry={retry} />
+        totalPages={totalPages} goToPage={goToPage} loading={loading} error={error} retry={retry} />
     </div>
   );
 };

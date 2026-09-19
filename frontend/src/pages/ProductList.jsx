@@ -1,10 +1,11 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
-import usePagedCatalog from "../hooks/usePagedCatalog";
+import useCatalogPagination from "../hooks/useCatalogPagination";
 import useCatalogFacets from "../hooks/useCatalogFacets";
-import CatalogLoadMore from "../components/CatalogLoadMore";
+import { LoaderCircle } from "lucide-react";
+import NumberedPagination from "../components/NumberedPagination";
 import apiClient from "../../api/apiClient";
 import {
   FaStar,
@@ -20,6 +21,7 @@ import { setUser } from "../redux/userSlice";
 
 const ProductList = () => {
   const dispatch = useDispatch();
+  const listRef = useRef(null);
   const user = useSelector((state) => state.user.user);
   const [searchParams] = useSearchParams();
   const [categoryFilters, setCategoryFilters] = useState(() => searchParams.get("category") ? [searchParams.get("category")] : []);
@@ -38,7 +40,7 @@ const ProductList = () => {
   const selectedCategory = searchParams.get("category");
   const isAdmin = user?.role === "admin";
   const sortNames = { Relevant: 'relevant', 'Price: Low to High': 'price-asc', 'Price: High to Low': 'price-desc', Newest: 'newest' };
-  const page = usePagedCatalog(productApi.getCatalogBatch, {
+  const page = useCatalogPagination(productApi.getCatalogBatch, {
     limit: 20, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
   });
   const { items: currentProducts, loading, setError, reload } = page;
@@ -249,8 +251,8 @@ const ProductList = () => {
           )}
         </AnimatePresence>
 
-        <main className="md:col-span-9">
-          {loading ? <p role="status" className="py-10 text-center">Loading products...</p> : currentProducts.length === 0 && !page.error ? (
+        <main ref={listRef} className="md:col-span-9 scroll-mt-24">
+          {loading ? <div role="status" className="flex justify-center py-10"><LoaderCircle aria-hidden="true" className="h-5 w-5 animate-spin text-red-500 motion-reduce:animate-none" /><span className="sr-only">Loading products...</span></div> : currentProducts.length === 0 && !page.error ? (
             <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
@@ -297,7 +299,14 @@ const ProductList = () => {
             </div>
           )}
 
-          <CatalogLoadMore {...page} shown={currentProducts.length} />
+          {page.error && <div role="alert" className="py-4 text-center text-red-600">
+            {page.error} <button type="button" onClick={page.retry} disabled={loading} className="ml-2 underline">Retry</button>
+          </div>}
+          <div className="mt-8">
+            <p role="status" className="mb-3 text-center text-sm text-gray-600">Page {page.page} of {page.totalPages} ? 20 per page</p>
+            <NumberedPagination page={page.page} totalPages={page.totalPages} loading={loading}
+              onPageChange={value => { page.goToPage(value); listRef.current?.scrollIntoView({ block: 'start' }); }} />
+          </div>
         </main>
       </div>
     </div>
