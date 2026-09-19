@@ -8,6 +8,7 @@ const {
 const { protect, admin } = require("../middleware/authmiddleware");
 
 // CRUD routes
+router.get("/admin/list", protect, admin, require("../controllers/adminProductList"));
 router.post("/", protect, admin, upload.array("images", 5), createProduct);
 router.get("/", getProducts); // keep public
 router.get("/category-counts", getCategoryCounts);

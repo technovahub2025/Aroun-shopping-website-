@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Plus,
   Pencil,
@@ -8,8 +8,6 @@ import {
   ImagePlus,
   Star,
   Layers,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   Download,
   Upload,
@@ -22,6 +20,8 @@ import { toast } from "react-toastify";
 import { useDropzone } from "react-dropzone";
 import { ReactSortable } from "react-sortablejs";
 import productApi from "../../../api/productApi";
+import useAdminProducts from "./useAdminProducts";
+import InfiniteRowsFooter from "./InfiniteRowsFooter";
 
 import { parseProductSheet } from "../../utils/productImport";
 
@@ -62,14 +62,13 @@ const fieldOrder = [
 ];
 
 const Products = () => {
-  const [cachedProducts] = useState(() => productApi.getCachedAll() || []);
-  const [products, setProducts] = useState(cachedProducts);
-  const [loading, setLoading] = useState(cachedProducts.length === 0);
+  const [saving, setLoading] = useState(false);
+  const [uniqueCategories, setUniqueCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const { products, loading: fetching, loadingMore, hasMore, error, loadMore, reload } = useAdminProducts({ search: searchTerm });
+  const loading = saving || fetching;
   const [importRows, setImportRows] = useState([]);
   const [importFileName, setImportFileName] = useState("");
   const [importing, setImporting] = useState(false);
@@ -118,27 +117,13 @@ const Products = () => {
   };
 
   useEffect(() => {
-    let active = true;
-    const fetchProducts = async () => {
-      try {
-        if (cachedProducts.length === 0) {
-          setLoading(true);
-        }
-
-        const res = await productApi.getAll(undefined, {
-          forceRefresh: cachedProducts.length > 0,
-        });
-        if (active) setProducts(Array.isArray(res.data) ? res.data : []);
-      } catch {
-        if (active) toast.error("Failed to fetch products");
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    fetchProducts();
-    return () => { active = false; };
-  }, [cachedProducts]);
+    if (!showModal) return;
+    const controller = new AbortController();
+    productApi.getCategoryCounts({ signal: controller.signal }).then(({ data }) => {
+      if (!controller.signal.aborted) setUniqueCategories(data.categories.map(row => row.category).filter(Boolean));
+    }).catch(() => { /* Category remains editable if suggestions cannot load. */ });
+    return () => controller.abort();
+  }, [showModal]);
 
   useEffect(() => {
     if (!showModal) return undefined;
@@ -291,17 +276,14 @@ const Products = () => {
       setLoading(true);
 
       if (editingProduct) {
-        const response = await productApi.update(editingProduct._id, data, config);
-        setProducts((prev) =>
-          prev.map((item) => (item._id === editingProduct._id ? response.data : item))
-        );
+        await productApi.update(editingProduct._id, data, config);
         toast.success("Product updated successfully!");
       } else {
-        const response = await productApi.create(data, config);
-        setProducts((prev) => [...prev, response.data]);
+        await productApi.create(data, config);
         toast.success("Product added successfully!");
       }
 
+      reload();
       setShowModal(false);
     } catch (err) {
       console.error(err);
@@ -317,7 +299,7 @@ const Products = () => {
     try {
       const product = products.find((item) => item?._id === id);
       await productApi.remove(id, { product });
-      setProducts((prev) => prev.filter((item) => item._id !== id));
+      reload();
       toast.success("Product deleted");
     } catch {
       toast.error("Failed to delete product");
@@ -434,7 +416,7 @@ const Products = () => {
       }
 
       if (createdProducts.length > 0) {
-        setProducts((prev) => [...prev, ...createdProducts]);
+        reload();
       }
 
       setImportRows(rows => rows.filter(row => !completedRows.has(row.rowNumber)));
@@ -459,84 +441,14 @@ const Products = () => {
     }
   };
 
-  const filtered = useMemo(
-    () =>
-      products.filter(
-        (product) =>
-          product.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.category?.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [products, searchTerm]
-  );
-
-  const uniqueCategories = useMemo(
-    () => Array.from(new Set(products.map((product) => product.category).filter(Boolean))),
-    [products]
-  );
-
-  const totalItems = filtered.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filtered.slice(indexOfFirstItem, indexOfLastItem);
+  const currentItems = products;
   const importedValidCount = importRows.filter((row) => row.isValid).length;
   const importedIssueCount = importRows.reduce((count, row) => count + row.issues.length, 0);
-  const getPageNumbers = () => {
-    const pages = [];
-
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i += 1) {
-        pages.push(i);
-      }
-      return pages;
-    }
-
-    pages.push(1);
-
-    if (currentPage > 3) {
-      pages.push("...");
-    }
-
-    let start = Math.max(2, currentPage - 1);
-    let end = Math.min(totalPages - 1, currentPage + 1);
-
-    if (currentPage <= 3) {
-      start = 2;
-      end = 4;
-    }
-
-    if (currentPage >= totalPages - 2) {
-      start = totalPages - 3;
-      end = totalPages - 1;
-    }
-
-    for (let i = start; i <= end; i += 1) {
-      pages.push(i);
-    }
-
-    if (currentPage < totalPages - 2) {
-      pages.push("...");
-    }
-
-    pages.push(totalPages);
-    return pages;
-  };
-
-  const handlePageChange = (pageNumber) => {
-    if (pageNumber < 1 || pageNumber > totalPages) return;
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   const { getRootProps, getInputProps } = useDropzone({
     accept: { "image/*": [] },
     onDrop: handleImageUpload,
   });
 
-  const handleItemsPerPageChange = (e) => {
-    setItemsPerPage(parseInt(e.target.value, 10));
-    setCurrentPage(1);
-  };
 
   const copyImageUrl = (url) => {
     navigator.clipboard
@@ -551,8 +463,7 @@ const Products = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Product Management</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Showing {totalItems === 0 ? 0 : indexOfFirstItem + 1}-
-            {Math.min(indexOfLastItem, totalItems)} of {totalItems} products
+            {currentItems.length} products loaded
           </p>
         </div>
       </div>
@@ -773,30 +684,15 @@ const Products = () => {
             type="text"
             placeholder="Search by title or category..."
             value={searchTerm}
+            maxLength={200}
             onChange={(e) => {
               setSearchTerm(e.target.value);
-              setCurrentPage(1);
             }}
             className="ml-2 outline-none flex-1 text-gray-700"
           />
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Show:</label>
-            <select
-              value={itemsPerPage}
-              onChange={handleItemsPerPageChange}
-              className="border rounded-md px-3 py-1 text-sm focus:ring-red-500 focus:border-red-500"
-            >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="50">50</option>
-            </select>
-            <span className="text-sm text-gray-600">per page</span>
-          </div>
-        </div>
+
       </div>
 
       <div className="overflow-x-auto bg-white rounded-lg shadow mb-6">
@@ -881,81 +777,8 @@ const Products = () => {
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
-          </div>
-
-          <div className="flex items-center gap-1 flex-wrap justify-center">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                currentPage === 1
-                  ? "text-gray-400 cursor-not-allowed"
-                  : "text-gray-700 hover:bg-gray-100 cursor-pointer"
-              }`}
-              title="Previous Page"
-            >
-              <span className="flex items-center gap-1">
-                <ChevronLeft className="w-4 h-4" />
-                Prev
-              </span>
-            </button>
-
-            {getPageNumbers().map((pageNum, index) => (
-              <button
-                key={`${pageNum}-${index}`}
-                onClick={() => pageNum !== "..." && handlePageChange(pageNum)}
-                disabled={pageNum === "..."}
-                className={`min-w-[40px] h-10 rounded-md px-3 text-sm font-medium ${
-                  pageNum === currentPage
-                    ? "bg-red-500 text-white"
-                    : pageNum === "..."
-                    ? "text-gray-400 cursor-default"
-                    : "text-gray-700 hover:bg-gray-100 cursor-pointer"
-                }`}
-              >
-                {pageNum}
-              </button>
-            ))}
-
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                currentPage === totalPages
-                  ? "text-gray-400 cursor-not-allowed"
-                  : "text-gray-700 hover:bg-gray-100 cursor-pointer"
-              }`}
-              title="Next Page"
-            >
-              <span className="flex items-center gap-1">
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Go to:</span>
-            <input
-              type="number"
-              min="1"
-              max={totalPages}
-              value={currentPage}
-              onChange={(e) => {
-                const page = parseInt(e.target.value, 10);
-                if (page >= 1 && page <= totalPages) {
-                  handlePageChange(page);
-                }
-              }}
-              className="w-16 border rounded-md px-2 py-1 text-sm text-center focus:ring-red-500 focus:border-red-500"
-            />
-          </div>
-        </div>
-      )}
+      <InfiniteRowsFooter shown={currentItems.length}
+        hasMore={hasMore} loadMore={loadMore} loading={loading} loadingMore={loadingMore} error={error} />
 
       {showModal && (
         <div

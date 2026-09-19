@@ -110,9 +110,11 @@ const AppContent = () => {
 const App = () => {
   // Persist auth check on app load
   React.useEffect(() => {
-    productApi.prefetchAll().catch((error) => {
-      console.error("Initial product prefetch failed:", error);
-    });
+    if (!/^\/admin(?:\/|$)/.test(window.location.pathname)) {
+      productApi.prefetchAll().catch((error) => {
+        console.error("Initial product prefetch failed:", error);
+      });
+    }
 
     const token = localStorage.getItem('token');
     if (token) {
