@@ -81,6 +81,9 @@ const clearProductCache = () => {
 };
 
 const productApi = {
+  getCatalogBatch: (params, config = {}) => apiClient.get(`${BASE_URL}/catalog`, { ...config, params }),
+  getCategoryPreviews: (params, config = {}) => apiClient.get(`${BASE_URL}/category-previews`, { ...config, params }),
+  getCatalogFacets: (config = {}) => apiClient.get(`${BASE_URL}/catalog-facets`, config),
   getAdminBatch: (params, config = {}) =>
     apiClient.get(`${BASE_URL}/admin/list`, { ...config, params }),
   getCategoryCounts: (config = {}) => apiClient.get(`${BASE_URL}/category-counts`, config),

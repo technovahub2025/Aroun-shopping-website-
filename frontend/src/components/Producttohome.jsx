@@ -2,16 +2,21 @@
 
 
 import React, { useState } from "react";
-import useCatalog from "../hooks/useCatalog";
+import usePagedCatalog from "../hooks/usePagedCatalog";
+import useCatalogFacets from "../hooks/useCatalogFacets";
+import productApi from "../../api/productApi";
+import CatalogLoadMore from "./CatalogLoadMore";
 import { Link } from "react-router-dom";
 import { FaStar, FaStarHalfAlt, FaRegStar } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Title from "./Title";
 
 const Producttohome = () => {
-  const { products, loading, error } = useCatalog();
-  const [visibleCount, setVisibleCount] = useState(8); // initially show 8
-  const [filter, setFilter] = useState(""); // category filter
+  const [filter, setFilter] = useState("");
+  const page = usePagedCatalog(productApi.getCatalogBatch, { limit: 8, sort: 'newest', categories: JSON.stringify(filter ? [filter] : []) });
+  const { items: visibleProducts, loading } = page;
+  const facets = useCatalogFacets();
+  const categories = facets.categories.map(category => category.name);
 
   // Rating stars helper
   const renderStars = (rating = 0) => {
@@ -25,26 +30,6 @@ const Producttohome = () => {
     return stars;
   };
 
-  // Unique category list (for dropdown)
-  const categories = Array.isArray(products)
-    ? [...new Set(products.map((p) => p.category).filter(Boolean))]
-    : [];
-
-  // Filtered products
-  const filteredProducts = filter
-    ? products.filter((p) => p?.category === filter)
-    : products;
-
-  // Visible subset
-  const visibleProducts = Array.isArray(filteredProducts)
-    ? filteredProducts.slice(0, visibleCount)
-    : [];
-
-  // Load more handler
-  const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 8);
-  };
-
   // Main loading state
   if (loading)
     return (
@@ -54,18 +39,12 @@ const Producttohome = () => {
       </div>
     );
 
-  // No products case
-  if (!Array.isArray(products) || products.length === 0)
-    return (
-      <div className="flex justify-center items-center h-64">
-        <p className="text-gray-500 text-lg">{error ? "Could not load products. Please refresh to try again." : "No products available right now."}</p>
-      </div>
-    );
 
   return (
     <div className="bg-gray-50 min-h-screen py-10 px-4 sm:px-6 md:px-10 lg:px-16">
       <Title text="Explore Our Latest Products" />
 
+      {facets.error && <button onClick={facets.reload} className="text-red-600">Retry loading categories</button>}
       {/* Category Filter */}
       {categories.length > 0 && (
         <div className="flex justify-end mb-6">
@@ -73,7 +52,6 @@ const Producttohome = () => {
             value={filter}
             onChange={(e) => {
               setFilter(e.target.value);
-              setVisibleCount(8);
             }}
             className="border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 shadow-sm focus:ring-2 focus:ring-green-400 focus:outline-none"
           >
@@ -96,14 +74,13 @@ const Producttohome = () => {
           >
             <Link to={`/products/${product._id}`}>
               <img
-                src={
-                  product.images?.[0]?.url ||
+                src={product.images?.[0]?.url ||
                   product.images?.[0] ||
                   product.image ||
-                  "/placeholder.jpg"
-                }
+                  "/placeholder.jpg"}
                 alt={product.title || product.name || "product image"}
                 loading="lazy"
+                decoding="async"
                 className="w-full md:h-[50vh] object-cover rounded-xl"
               />
             </Link>
@@ -162,17 +139,8 @@ const Producttohome = () => {
         ))}
       </div>
 
-      {/* Load More Button */}
-      {visibleCount < filteredProducts.length && (
-        <div className="flex justify-center mt-10">
-          <button
-            onClick={handleLoadMore}
-            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition disabled:opacity-60"
-          >
-            Load More
-          </button>
-        </div>
-      )}
+      {!loading && !page.error && visibleProducts.length === 0 && <p className="py-8 text-center">No products found.</p>}
+      <CatalogLoadMore {...page} shown={visibleProducts.length} />
     </div>
   );
 };

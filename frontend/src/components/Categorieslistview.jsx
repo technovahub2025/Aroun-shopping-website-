@@ -1,6 +1,8 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import useCatalog from "../hooks/useCatalog";
+import usePagedCatalog from "../hooks/usePagedCatalog";
+import productApi from "../../api/productApi";
+import CatalogLoadMore from "./CatalogLoadMore";
 import { Loader2 } from "lucide-react";
 import Title from "./Title";
 
@@ -8,12 +10,8 @@ import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/blur.css";
 
 const CategoryListView = () => {
-  const { products, loading } = useCatalog();
-  const groupedCategories = useMemo(() => products.reduce((groups, product) => {
-    const category = product.category || "Uncategorized";
-    (groups[category] ||= []).push(product);
-    return groups;
-  }, {}), [products]);
+  const page = usePagedCatalog(productApi.getCategoryPreviews, { limit: 3 });
+  const { loading } = page;
 
   return (
     <div className="px-4 md:px-10 py-8 max-w-7xl mx-auto">
@@ -27,13 +25,14 @@ const CategoryListView = () => {
       ) : (
         <div className="space-y-12">
 
-          {Object.entries(groupedCategories).map(([categoryName, products]) => (
+          {page.items.map(({ name: categoryName, products, count }) => (
 
             <div key={categoryName}>
 
               <h2 className="text-xl md:text-2xl font-semibold text-gray-900 mb-5">
                 {categoryName}
               </h2>
+              <Link to={`/product?category=${encodeURIComponent(categoryName)}`} className="mb-4 inline-block text-red-600">View all {count} products</Link>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
 
@@ -48,10 +47,8 @@ const CategoryListView = () => {
                     <div className="w-full h-32 sm:h-36 bg-gray-100 overflow-hidden flex items-center justify-center">
 
                       <LazyLoadImage
-                        src={
-                          (product.images && product.images[0]) ||
-                          "/placeholder.jpg"
-                        }
+                        src={(product.images && product.images[0]) ||
+                          "/placeholder.jpg"}
                         alt={product.title}
                         effect="blur"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
@@ -80,7 +77,7 @@ const CategoryListView = () => {
         </div>
       )}
 
-
+      <CatalogLoadMore {...page} shown={page.items.length} label="categories" />
     </div>
   );
 };
