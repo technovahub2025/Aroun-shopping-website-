@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
+import usePagedCatalog from "../hooks/usePagedCatalog";
 import productApi from "../../api/productApi";
+import CatalogLoadMore from "./CatalogLoadMore";
 import Title from "./Title";
 
 const gradientPalette = [
@@ -16,53 +18,12 @@ const gradientPalette = [
 ];
 
 const CategoriesCarousel = () => {
-  const [categories, setCategories] = useState([]);
+  const page = usePagedCatalog(productApi.getCategoryPreviews, { limit: 6 });
+  const categories = page.items;
   const navigate = useNavigate();
-
-  const fetchProducts = async () => {
-    try {
-      const res = await productApi.getAll();
-      let products = res.data;
-
-      if (!Array.isArray(products)) {
-        products = products?.products || [];
-      }
-
-      if (products.length === 0) return;
-
-      const categoryMap = {};
-
-      products.forEach((p) => {
-        const cat = p.category;
-
-        if (cat) {
-          if (!categoryMap[cat]) {
-            categoryMap[cat] = {
-              name: cat,
-              image:
-                p.images?.[0]?.url ||
-                p.images?.[0] ||
-                p.image ||
-                "/placeholder.png",
-              items: [],
-            };
-          }
-
-          categoryMap[cat].items.push(
-            p.name || p.title || "Unnamed Product"
-          );
-        }
-      });
-
-      setCategories(Object.values(categoryMap));
-    } catch (error) {
-      console.error("Failed to load categories:", error);
-    }
+  const loadNext = swiper => {
+    if (swiper.activeIndex >= categories.length - 6 && page.hasMore && !page.error) page.loadMore();
   };
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
 
   const handleViewMore = (catName) => {
     navigate(`/product?category=${encodeURIComponent(catName)}`);
@@ -73,6 +34,8 @@ const CategoriesCarousel = () => {
       <Title text="Shop by Categories" />
 
       <Swiper
+        onReachEnd={loadNext}
+        onSlideChange={loadNext}
         spaceBetween={20}
         slidesPerView={2.2}
         breakpoints={{
@@ -88,7 +51,7 @@ const CategoriesCarousel = () => {
         modules={[Autoplay]}
       >
         {categories.map((cat, index) => (
-          <SwiperSlide key={index}>
+          <SwiperSlide key={cat.name}>
             <div
               className={`flex flex-col items-center justify-between mb-10 min-h-[270px] md:min-h-[290px] bg-gradient-to-br ${
                 gradientPalette[index % gradientPalette.length]
@@ -96,9 +59,10 @@ const CategoriesCarousel = () => {
             >
               <div className="mt-6 w-28 h-28 rounded-full overflow-hidden bg-white shadow-inner flex items-center justify-center border border-gray-100 p-4">
                 <img
-                  src={cat.image}
+                  src={cat.products[0]?.images?.[0] || "/placeholder.png"}
                   alt={cat.name}
                   loading="lazy"
+                  decoding="async"
                   className="object-cover w-full h-full"
                 />
               </div>
@@ -109,8 +73,8 @@ const CategoriesCarousel = () => {
                 </h3>
 
                 <ul className="text-gray-600 text-xs md:text-sm mt-1 space-y-0.5 line-clamp-2">
-                  {cat.items.slice(0, 3).map((item, idx) => (
-                    <li key={idx}>{item}</li>
+                  {cat.products.slice(0, 3).map((item, idx) => (
+                    <li key={idx}>{item.title}</li>
                   ))}
                 </ul>
               </div>
@@ -125,6 +89,7 @@ const CategoriesCarousel = () => {
           </SwiperSlide>
         ))}
       </Swiper>
+      <CatalogLoadMore {...page} shown={categories.length} label="categories" auto={false} />
     </div>
   );
 };

@@ -1,7 +1,12 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
+import useCatalogPagination from "../hooks/useCatalogPagination";
+import useCatalogFacets from "../hooks/useCatalogFacets";
+import { LoaderCircle } from "lucide-react";
+import NumberedPagination from "../components/NumberedPagination";
 import apiClient from "../../api/apiClient";
 import {
   FaStar,
@@ -11,27 +16,21 @@ import {
   FaTimes,
   FaTrash,
 } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
 import { setUser } from "../redux/userSlice";
 
 const ProductList = () => {
   const dispatch = useDispatch();
+  const listRef = useRef(null);
   const user = useSelector((state) => state.user.user);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [availableCategories, setAvailableCategories] = useState([]);
-  const [availableTypes, setAvailableTypes] = useState([]);
-  const [categoryFilters, setCategoryFilters] = useState([]);
+  const [searchParams] = useSearchParams();
+  const [categoryFilters, setCategoryFilters] = useState(() => searchParams.get("category") ? [searchParams.get("category")] : []);
   const [typeFilters, setTypeFilters] = useState([]);
   const [sortBy, setSortBy] = useState("Relevant");
-  const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
-  const [searchParams] = useSearchParams();
 
-  const itemsPerPage = 60;
   const sortOptions = [
     "Relevant",
     "Price: Low to High",
@@ -40,7 +39,17 @@ const ProductList = () => {
   ];
 
   const selectedCategory = searchParams.get("category");
+  const search = searchParams.get("search")?.trim() || "";
   const isAdmin = user?.role === "admin";
+  const sortNames = { Relevant: 'relevant', 'Price: Low to High': 'price-asc', 'Price: High to Low': 'price-desc', Newest: 'newest' };
+  const page = useCatalogPagination(productApi.getCatalogBatch, {
+    limit: 60, search, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
+  });
+  const { items: currentProducts, loading, setError, reload } = page;
+  const facets = useCatalogFacets();
+  const availableCategories = facets.categories.map(category => category.name);
+  const availableTypes = facets.types;
+  const categoryCounts = new Map(facets.categories.map(category => [category.name, category.count]));
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -52,35 +61,13 @@ const ProductList = () => {
       }
     };
 
-    if (!user) {
+    if (!user && localStorage.getItem("token")) {
       fetchUser();
     }
   }, [dispatch, user]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await productApi.getAll();
-        const data = res.data || [];
-
-        setProducts(data);
-
-        setAvailableCategories(
-          Array.from(new Set(data.map((p) => p.category).filter(Boolean)))
-        );
-
-        setAvailableTypes(
-          Array.from(new Set(data.map((p) => p.type).filter(Boolean)))
-        );
-
-        if (selectedCategory) setCategoryFilters([selectedCategory]);
-      } catch (err) {
-        setError(err.response?.data?.message || err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    setCategoryFilters(selectedCategory ? [selectedCategory] : []);
   }, [selectedCategory]);
 
   useEffect(() => {
@@ -93,14 +80,12 @@ const ProductList = () => {
     setCategoryFilters((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
-    setCurrentPage(1);
   };
 
   const handleTypeChange = (type) => {
     setTypeFilters((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
-    setCurrentPage(1);
   };
 
   const handleCategoryDelete = async (category) => {
@@ -112,84 +97,13 @@ const ProductList = () => {
     try {
       await productApi.deleteCategory(category);
 
-      setProducts((prev) => prev.filter((p) => p.category !== category));
-      setAvailableCategories((prev) => prev.filter((cat) => cat !== category));
+      reload();
+      facets.reload();
       setCategoryFilters((prev) => prev.filter((cat) => cat !== category));
-      setCurrentPage(1);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to delete category");
     }
   };
-
-  const filteredAndSortedProducts = useMemo(() => {
-    let temp = [...products];
-
-    if (categoryFilters.length > 0) {
-      temp = temp.filter((p) =>
-        categoryFilters.some((f) => p.category === f)
-      );
-    }
-
-    if (typeFilters.length > 0) {
-      temp = temp.filter((p) => typeFilters.includes(p.type));
-    }
-
-    switch (sortBy) {
-      case "Price: Low to High":
-        temp.sort((a, b) => a.price - b.price);
-        break;
-      case "Price: High to Low":
-        temp.sort((a, b) => b.price - a.price);
-        break;
-      case "Newest":
-        temp.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        break;
-      default:
-        break;
-    }
-
-    return temp;
-  }, [products, categoryFilters, typeFilters, sortBy]);
-
-  const indexOfLast = currentPage * itemsPerPage;
-  const currentProducts = filteredAndSortedProducts.slice(
-    indexOfLast - itemsPerPage,
-    indexOfLast
-  );
-  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
-
-const getPageNumbers = () => {
-  const pages = [];
-
-  if (totalPages <= 7) {
-    // if pages are small show all
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-    return pages;
-  }
-
-  pages.push(1);
-
-  if (currentPage > 4) {
-    pages.push("...");
-  }
-
-  let start = Math.max(2, currentPage - 1);
-  let end = Math.min(totalPages - 1, currentPage + 1);
-
-  for (let i = start; i <= end; i++) {
-    pages.push(i);
-  }
-
-  if (currentPage < totalPages - 3) {
-    pages.push("...");
-  }
-
-  pages.push(totalPages);
-
-  return pages;
-};
 
   const renderStars = (rating = 0) => {
     const stars = [];
@@ -201,16 +115,6 @@ const getPageNumbers = () => {
     }
     return stars;
   };
-
-  if (loading)
-    return (
-      <div className="text-center h-[100vh] text-gray-500 py-20">
-        Loading products...
-      </div>
-    );
-
-  if (error)
-    return <p className="text-center text-red-500 py-20">Error: {error}</p>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
@@ -246,7 +150,7 @@ const getPageNumbers = () => {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         <AnimatePresence>
           {showFilters && !isDesktop && (
-            <motion.div
+            <Motion.div
               key="overlay"
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
@@ -258,7 +162,7 @@ const getPageNumbers = () => {
           )}
 
           {(showFilters || isDesktop) && (
-            <motion.aside
+            <Motion.aside
               key="filters"
               initial={{ x: isDesktop ? 0 : -300, opacity: isDesktop ? 1 : 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -290,6 +194,7 @@ const getPageNumbers = () => {
                 </h2>
               )}
 
+              {facets.error && <button onClick={facets.reload} className="text-red-600">Retry loading filters</button>}
               {availableCategories.length > 0 && (
                 <div className="mb-6">
                   <h3 className="font-semibold mb-2 text-gray-700">Category</h3>
@@ -306,6 +211,9 @@ const getPageNumbers = () => {
                           className="w-4 h-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                         />
                         <span className="ml-2">{cat}</span>
+                        <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700" aria-label={`${categoryCounts.get(cat) || 0} products`}>
+                          {categoryCounts.get(cat) || 0}
+                        </span>
                       </label>
                       {isAdmin && (
                         <button
@@ -341,12 +249,12 @@ const getPageNumbers = () => {
                   ))}
                 </div>
               )}
-            </motion.aside>
+            </Motion.aside>
           )}
         </AnimatePresence>
 
-        <main className="md:col-span-9">
-          {filteredAndSortedProducts.length === 0 ? (
+        <main ref={listRef} className="md:col-span-9 scroll-mt-24">
+          {loading ? <div role="status" className="flex justify-center py-10"><LoaderCircle aria-hidden="true" className="h-5 w-5 animate-spin text-red-500 motion-reduce:animate-none" /><span className="sr-only">Loading products...</span></div> : currentProducts.length === 0 && !page.error ? (
             <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
@@ -358,8 +266,10 @@ const getPageNumbers = () => {
                 >
                   <div className="relative bg-gray-50 flex items-center justify-center aspect-[4/3] overflow-hidden">
                     <img
-                      src={product.images?.[0] || "/placeholder.png"}
+                      src={resolveImageUrl(product.images?.[0] || "/placeholder.png")}
                       alt={product.title}
+                      loading="lazy"
+                      decoding="async"
                       className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
@@ -391,56 +301,14 @@ const getPageNumbers = () => {
             </div>
           )}
 
-          {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-3 mt-10">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className={`px-5 py-2 rounded-lg font-medium transition-all ${
-                  currentPage === 1
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-gray-200 text-gray-700 hover:bg-red-400 hover:text-white"
-                }`}
-              >
-                Prev
-              </button>
-
-              <div className="flex items-center gap-2 flex-wrap justify-center">
-                {getPageNumbers().map((pageNum, index) => (
-                  <button
-                    key={`${pageNum}-${index}`}
-                    onClick={() =>
-                      pageNum !== "..." && setCurrentPage(pageNum)
-                    }
-                    disabled={pageNum === "..."}
-                    className={`min-w-[40px] h-10 rounded-lg px-3 text-sm font-medium transition-all ${
-                      pageNum === currentPage
-                        ? "bg-red-500 text-white shadow-md"
-                        : pageNum === "..."
-                        ? "text-gray-400 cursor-default"
-                        : "bg-gray-200 text-gray-700 hover:bg-red-400 hover:text-white"
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className={`px-5 py-2 rounded-lg font-medium transition-all ${
-                  currentPage === totalPages
-                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    : "bg-red-500 text-white hover:bg-red-600"
-                }`}
-              >
-                Next
-              </button>
-            </div>
-          )}
+          {page.error && <div role="alert" className="py-4 text-center text-red-600">
+            {page.error} <button type="button" onClick={page.retry} disabled={loading} className="ml-2 underline">Retry</button>
+          </div>}
+          <div className="mt-8">
+            <p role="status" className="mb-3 text-center text-sm text-gray-600">Page {page.page} of {page.totalPages} &middot; 60 per page</p>
+            <NumberedPagination page={page.page} totalPages={page.totalPages} loading={loading}
+              onPageChange={value => { page.goToPage(value); listRef.current?.scrollIntoView({ block: 'start' }); }} />
+          </div>
         </main>
       </div>
     </div>

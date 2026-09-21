@@ -218,6 +218,72 @@ exports.getProducts = async (req, res) => {
   }
 };
 
+// Count each product once, even when it references multiple Drive images.
+// This checks saved image URLs; it does not verify file availability in Drive.
+exports.getDriveImageProductCount = async (req, res) => {
+  try {
+    const driveImageFilter = {
+      images: {
+        $regex: /^(?:https?:\/\/[^/]+\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|\/api\/drive-images\/[A-Za-z0-9_-]+(?:\?|$)|https?:\/\/drive\.google\.com\/(?:file\/d\/[A-Za-z0-9_-]+|(?:uc|thumbnail|open)\?[^#]*\bid=[A-Za-z0-9_-]+))/,
+      },
+    };
+    const [totalProductsWithDriveImages, pendingProducts] = await Promise.all([
+      Product.countDocuments(driveImageFilter),
+      Product.find({ $nor: [driveImageFilter] })
+        .select("_id title category")
+        .sort({ category: 1, title: 1, _id: 1 })
+        .lean(),
+    ]);
+    const remainingProducts = pendingProducts.length;
+    const totalProducts = totalProductsWithDriveImages + remainingProducts;
+    const categoryMap = new Map();
+    for (const product of pendingProducts) {
+      const category = product.category || "Uncategorized";
+      if (!categoryMap.has(category)) {
+        categoryMap.set(category, { category, count: 0, products: [] });
+      }
+      const group = categoryMap.get(category);
+      group.count += 1;
+      group.products.push({ _id: product._id, title: product.title });
+    }
+    const pendingCategories = [...categoryMap.values()]
+      .sort((a, b) => a.category.localeCompare(b.category));
+    const completed = remainingProducts === 0;
+
+    res.json({
+      totalProducts,
+      totalProductsWithDriveImages,
+      remainingProducts,
+      pendingCategories,
+      status: completed ? "completed" : "pending",
+      message: completed
+        ? "completed"
+        : `${remainingProducts} product${remainingProducts === 1 ? "" : "s"} need${remainingProducts === 1 ? "s" : ""} to complete`,
+    });
+  } catch (err) {
+    console.error("Error counting products with Drive images:", err);
+    res.status(500).json({ message: "Failed to count products with Drive images" });
+  }
+};
+
+// Count product listings (not stock units) in each category.
+exports.getCategoryCounts = async (req, res) => {
+  try {
+    const categories = await Product.aggregate([
+      { $group: { _id: "$category", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, category: "$_id", count: 1 } },
+    ]);
+    res.json({
+      categories,
+      total: categories.reduce((sum, row) => sum + row.count, 0),
+    });
+  } catch (err) {
+    console.error("Error fetching category counts:", err);
+    res.status(500).json({ message: "Failed to fetch category counts" });
+  }
+};
+
 // READ Single Product
 exports.getProduct = async (req, res) => {
   try {

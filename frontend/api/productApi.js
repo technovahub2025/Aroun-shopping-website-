@@ -7,6 +7,11 @@ const CACHE_TTL_MS = 60 * 1000;
 const inMemoryCache = new Map();
 const pendingRequests = new Map();
 const DELETED_CACHE_KEY = `${CACHE_PREFIX}deleted:list`;
+const CATALOG_SNAPSHOT_KEY = `${CACHE_PREFIX}catalog:snapshot`;
+
+const removeCatalogSnapshot = () => {
+  try { localStorage.removeItem(CATALOG_SNAPSHOT_KEY); } catch { /* Storage may be disabled. */ }
+};
 
 const buildCacheKey = (query) => {
   if (!query) return `${CACHE_PREFIX}all`;
@@ -23,7 +28,8 @@ const readCache = (key) => {
     return memoryEntry.data;
   }
 
-  const raw = sessionStorage.getItem(key);
+  let raw;
+  try { raw = sessionStorage.getItem(key); } catch { return null; }
   if (!raw) return null;
 
   try {
@@ -43,7 +49,10 @@ const readCache = (key) => {
 const writeCache = (key, data) => {
   const entry = { data, timestamp: Date.now() };
   inMemoryCache.set(key, entry);
-  sessionStorage.setItem(key, JSON.stringify(entry));
+  try { sessionStorage.setItem(key, JSON.stringify(entry)); } catch { /* Keep the memory cache. */ }
+  if (key === buildCacheKey()) {
+    try { localStorage.setItem(CATALOG_SNAPSHOT_KEY, JSON.stringify(entry)); } catch { /* Keep the memory cache. */ }
+  }
 };
 
 const safeArray = (value) => (Array.isArray(value) ? value : []);
@@ -64,6 +73,7 @@ const upsertById = (rows, row) => {
 };
 
 const clearProductCache = () => {
+  removeCatalogSnapshot();
   inMemoryCache.clear();
   Object.keys(sessionStorage)
     .filter((key) => key.startsWith(CACHE_PREFIX))
@@ -71,6 +81,13 @@ const clearProductCache = () => {
 };
 
 const productApi = {
+  getCatalogBatch: (params, config = {}) => apiClient.get(`${BASE_URL}/catalog`, { ...config, params }),
+  getCategoryPreviews: (params, config = {}) => apiClient.get(`${BASE_URL}/category-previews`, { ...config, params }),
+  getCatalogFacets: (config = {}) => apiClient.get(`${BASE_URL}/catalog-facets`, config),
+  getAdminBatch: (params, config = {}) =>
+    apiClient.get(`${BASE_URL}/admin/list`, { ...config, params }),
+  getCategoryCounts: (config = {}) => apiClient.get(`${BASE_URL}/category-counts`, config),
+
   // Get all products
   getAll: async (query, options = {}) => {
     const { forceRefresh = false } = options;
@@ -125,7 +142,16 @@ const productApi = {
   // Update product by ID
   update: async (id, productData, config = {}) => {
     const response = await apiClient.put(`${BASE_URL}/${id}`, productData, config);
-    clearProductCache();
+    removeCatalogSnapshot();
+
+    // Replace only the edited item in the cached catalog. Clearing this cache
+    // makes the admin product page fetch the entire list again after every edit.
+    patchCacheList(buildCacheKey(), (rows) =>
+      rows.map((product) =>
+        product?._id === response.data?._id ? response.data : product
+      )
+    );
+
     return response;
   },
 
@@ -133,6 +159,7 @@ const productApi = {
   remove: async (id, options = {}) => {
     const { product } = options;
     const response = await apiClient.delete(`${BASE_URL}/${id}`);
+    removeCatalogSnapshot();
 
     // Keep cached lists so admin pages render instantly; patch the relevant caches optimistically.
     patchCacheList(buildCacheKey(), (rows) => rows.filter((p) => p?._id !== id));
@@ -208,6 +235,7 @@ const productApi = {
   restore: async (id, options = {}) => {
     const { product } = options;
     const response = await apiClient.patch(`${BASE_URL}/${id}/restore`);
+    removeCatalogSnapshot();
 
     // Keep cached lists so admin pages render instantly; patch the relevant caches optimistically.
     patchCacheList(DELETED_CACHE_KEY, (rows) => rows.filter((p) => p?._id !== id));
@@ -233,6 +261,19 @@ const productApi = {
   prefetchDeleted: () => productApi.getDeleted({ forceRefresh: false }),
 
   getCachedAll: (query) => readCache(buildCacheKey(query)),
+
+  // Display-only snapshot; getAll still checks freshness and fetches updated data.
+  getCatalogSnapshot: () => {
+    const cached = readCache(buildCacheKey());
+    if (Array.isArray(cached)) return cached;
+    try {
+      const entry = JSON.parse(localStorage.getItem(CATALOG_SNAPSHOT_KEY));
+      if (entry && Date.now() - entry.timestamp < 24 * 60 * 60 * 1000 && Array.isArray(entry.data)) {
+        return entry.data;
+      }
+    } catch { /* Missing or unavailable storage must not prevent loading. */ }
+    return null;
+  },
 
   clearCache: clearProductCache,
 };

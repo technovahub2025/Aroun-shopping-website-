@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 // import DashboardHome from './DashboardHome';
-import Products from './Products';
-import DeletedProducts from './DeletedProducts';
+const Products = lazy(() => import('./Products'));
+const DeletedProducts = lazy(() => import('./DeletedProducts'));
 
 const AdminRoutes = () => {
   return (
+    <Suspense fallback={<p role="status" className="p-6 text-gray-500">Loading admin page...</p>}>
     <Routes>
       {/* <Route path="/" element={<DashboardHome />} /> */}
       <Route path="/" element={<Products />} />
@@ -13,6 +14,7 @@ const AdminRoutes = () => {
       {/* <Route path="users" element={<div>Users Management (Coming Soon)</div>} />
       <Route path="settings" element={<div>Settings (Coming Soon)</div>} /> */}
     </Routes>
+    </Suspense>
   );
 };
 

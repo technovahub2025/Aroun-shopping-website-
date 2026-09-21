@@ -1,37 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { toast } from "react-toastify";
 import productApi from "../../../api/productApi";
+import useAdminProducts from "./useAdminProducts";
+import AdminPagination from "./AdminPagination";
 
 const DeletedProducts = () => {
-  const cachedDeleted = productApi.getCachedDeleted?.() || [];
-  const initialProducts = cachedDeleted.filter((p) => p?.isDeleted === true);
-  const [products, setProducts] = useState(initialProducts);
-  const [loading, setLoading] = useState(initialProducts.length === 0);
+  const { products, loading, error, reload, retry, page, pageSize, setPageSize, totalPages, goToPage } = useAdminProducts({ deleted: true });
   const [restoringId, setRestoringId] = useState(null);
-
-  const fetchDeletedProducts = async ({ forceRefresh = false, showSpinner = false } = {}) => {
-    try {
-      if (showSpinner) {
-        setLoading(true);
-      }
-      const res = await productApi.getDeleted({ forceRefresh });
-      setProducts((res.data || []).filter((p) => p?.isDeleted === true));
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to fetch deleted products");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Also warm up Products.jsx so navigation back is instant.
-    productApi.prefetchAll?.();
-    fetchDeletedProducts({
-      forceRefresh: initialProducts.length > 0,
-      showSpinner: initialProducts.length === 0,
-    });
-  }, []);
 
   const handleRestore = async (product) => {
     const id = product?._id;
@@ -40,7 +16,7 @@ const DeletedProducts = () => {
     try {
       setRestoringId(id);
       await productApi.restore(id, { product });
-      setProducts((prev) => prev.filter((p) => p._id !== id));
+      reload();
       toast.success("Product restored successfully");
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to restore product");
@@ -93,6 +69,10 @@ const DeletedProducts = () => {
                           ? p.images[0]
                           : "/placeholder.png"
                       }
+                      loading="lazy"
+                      decoding="async"
+                      width={56}
+                      height={56}
                       alt={p.title}
                       className="w-14 h-14 object-cover rounded-md"
                     />
@@ -123,6 +103,8 @@ const DeletedProducts = () => {
           </tbody>
         </table>
       </div>
+      <AdminPagination shown={products.length} page={page} pageSize={pageSize} setPageSize={setPageSize}
+        totalPages={totalPages} goToPage={goToPage} loading={loading} error={error} retry={retry} />
     </div>
   );
 };

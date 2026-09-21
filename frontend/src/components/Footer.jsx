@@ -15,10 +15,10 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { icon: <Facebook size={20} />, url: 'https://facebook.com', name: 'Facebook' },
-    { icon: <Instagram size={20} />, url: 'https://instagram.com', name: 'Instagram' },
-    { icon: <Twitter size={20} />, url: 'https://twitter.com', name: 'Twitter' },
-    { icon: <Linkedin size={20} />, url: 'https://linkedin.com', name: 'LinkedIn' }
+    { icon: <Facebook size={20} />, url: 'https://www.facebook.com/', name: 'Facebook' },
+    { icon: <Instagram size={20} />, url: 'https://www.instagram.com/', name: 'Instagram' },
+    { icon: <Twitter size={20} />, url: 'https://x.com/', name: 'X (Twitter)' },
+    { icon: <Linkedin size={20} />, url: 'https://www.linkedin.com/', name: 'LinkedIn' }
   ];
 
   return (

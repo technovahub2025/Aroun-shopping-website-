@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import apiClient from "../api/apiClient";
-import productApi from "../api/productApi";
 import orderApi from "../api/orderApi";
 import { store } from "./app/store";
 import { setUser } from "./redux/userSlice";
@@ -83,6 +82,14 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/profile/settings"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Admin Dashboard (with Sidebar Layout) */}
         <Route
@@ -110,10 +117,6 @@ const AppContent = () => {
 const App = () => {
   // Persist auth check on app load
   React.useEffect(() => {
-    productApi.prefetchAll().catch((error) => {
-      console.error("Initial product prefetch failed:", error);
-    });
-
     const token = localStorage.getItem('token');
     if (token) {
       const checkAuth = async () => {
@@ -140,4 +143,3 @@ const App = () => {
 };
 
 export default App;
-
