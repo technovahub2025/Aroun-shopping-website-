@@ -19,6 +19,7 @@ const LayoutDashboard = () => {
 
   const [storageStatus, setStorageStatus] = useState({
     loading: true,
+    unavailable: false,
     connected: false,
     email: null,
     folderAccessible: false,
@@ -50,6 +51,7 @@ const LayoutDashboard = () => {
 
       setStorageStatus({
         loading: false,
+        unavailable: false,
         connected: Boolean(data?.connected),
         email: data?.email || null,
         folderAccessible: Boolean(data?.folderAccessible),
@@ -60,12 +62,11 @@ const LayoutDashboard = () => {
         error?.response?.data || error?.message || error
       );
 
-      setStorageStatus({
+      setStorageStatus((previous) => ({
+        ...previous,
         loading: false,
-        connected: false,
-        email: null,
-        folderAccessible: false,
-      });
+        unavailable: true,
+      }));
     } finally {
       setRefreshing(false);
     }
@@ -108,8 +109,7 @@ const LayoutDashboard = () => {
     window.location.href = `${apiRoot}/api/google-drive/auth`;
   };
 
-  const isConnected =
-    storageStatus.connected && storageStatus.folderAccessible;
+  const isConnected = storageStatus.connected;
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
@@ -172,6 +172,8 @@ const LayoutDashboard = () => {
                     <span className="text-sm text-gray-500">
                       Checking...
                     </span>
+                  ) : storageStatus.unavailable ? (
+                    <span className="text-sm text-amber-600">Status unavailable</span>
                   ) : isConnected ? (
                     /* Connected */
                     <>
@@ -228,18 +230,18 @@ const LayoutDashboard = () => {
               )}
 
               {/* Folder Ready */}
-              {!storageStatus.loading && isConnected && (
+              {!storageStatus.loading && !storageStatus.unavailable && isConnected && (
                 <div className="flex items-center gap-1.5 mt-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" />
 
                   <span className="text-xs text-green-600">
-                    Storage folder ready
+                    {storageStatus.folderAccessible ? "Storage folder ready" : "Storage folder unavailable"}
                   </span>
                 </div>
               )}
 
               {/* Reconnect */}
-              {!storageStatus.loading && !isConnected && (
+              {!storageStatus.loading && !storageStatus.unavailable && !isConnected && (
                 <button
                   type="button"
                   onClick={reconnectStorage}
