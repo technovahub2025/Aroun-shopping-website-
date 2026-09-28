@@ -112,7 +112,7 @@ const Checkout = () => {
 
   const startRazorpayFlow = async () => {
     // Razorpay expects the smallest currency unit, so convert rupees to paise here.
-    const amountInPaise = Math.round(subtotal * 100);
+    const amountInPaise = Math.round(total * 100);
     const receipt = `rcpt_${Date.now()}`;
     const notes = {
       customer_name: `${formData.firstName} ${formData.lastName}`.trim(),
