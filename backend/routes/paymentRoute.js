@@ -4,6 +4,6 @@ const { processPayment } = require('../controllers/paymentController');
 const { protect } = require('../middleware/authmiddleware');
 
 // Protected payment endpoint (dummy)
-router.post('/', protect, processPayment);
+router.post('/payment/create-order', protect, processPayment);
 
 module.exports = router;
