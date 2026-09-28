@@ -2,7 +2,9 @@ const { test, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const drive = require('../utils/googleDrive');
 const originalFetch = global.fetch;
-afterEach(() => { global.fetch = originalFetch; });
+const credentials = require('../utils/driveCredentials');
+const originalGetRefreshToken = credentials.getRefreshToken;
+afterEach(() => { global.fetch = originalFetch; credentials.getRefreshToken = originalGetRefreshToken; drive.invalidateAccessToken(); });
 
 test('rejects unsupported and mislabeled image bytes', () => {
   assert.throws(() => drive.validateImage({ buffer: Buffer.from('<svg/>'), mimetype: 'image/png' }), /valid JPEG/);
@@ -16,6 +18,7 @@ test('missing configuration prevents uploads before network access', async () =>
 });
 
 test('uploads multipart bytes, signs image URLs, and refuses tampered IDs', async () => {
+  credentials.getRefreshToken = async () => 'test-refresh';
   Object.assign(process.env, {
     GOOGLE_DRIVE_CLIENT_ID: 'test-client', GOOGLE_DRIVE_CLIENT_SECRET: 'test-secret',
     GOOGLE_DRIVE_REFRESH_TOKEN: 'test-refresh', DRIVE_IMAGE_SIGNING_SECRET: 'test-signing-secret',

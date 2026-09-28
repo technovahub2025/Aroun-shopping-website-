@@ -1,12 +1,14 @@
 const { createHmac, randomUUID, timingSafeEqual } = require('node:crypto');
+const credentials = require('./driveCredentials');
 
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const fail = (message, status = 502) => Object.assign(new Error(message), { status, expose: true });
 let token;
 let expiresAt = 0;
+let tokenCredentials;
 
 function config() {
-  const names = ['GOOGLE_DRIVE_CLIENT_ID', 'GOOGLE_DRIVE_CLIENT_SECRET', 'GOOGLE_DRIVE_REFRESH_TOKEN', 'DRIVE_IMAGE_SIGNING_SECRET', 'PUBLIC_API_URL'];
+  const names = ['GOOGLE_DRIVE_CLIENT_ID', 'GOOGLE_DRIVE_CLIENT_SECRET', 'DRIVE_IMAGE_SIGNING_SECRET', 'PUBLIC_API_URL'];
   if (names.some((name) => !process.env[name])) {
     throw fail('Google Drive uploads are not configured. See backend/GOOGLE_DRIVE_SETUP.md.', 503);
   }
@@ -16,29 +18,33 @@ function config() {
 }
 
 async function accessToken() {
-  if (['GOOGLE_DRIVE_CLIENT_ID', 'GOOGLE_DRIVE_CLIENT_SECRET', 'GOOGLE_DRIVE_REFRESH_TOKEN'].some(name => !process.env[name])) {
+  if (['GOOGLE_DRIVE_CLIENT_ID', 'GOOGLE_DRIVE_CLIENT_SECRET'].some(name => !process.env[name])) {
     throw Object.assign(new Error('Storage is not configured.'), { code: 'STORAGE_NOT_CONFIGURED', status: 503, expose: true });
   }
-  if (token && Date.now() < expiresAt) return token;
+  const refreshToken = await credentials.getRefreshToken();
+  if (!refreshToken) throw Object.assign(fail('Google Drive is not connected.', 503), { code: 'STORAGE_NOT_CONFIGURED' });
+  const credentialKey = JSON.stringify([process.env.GOOGLE_DRIVE_CLIENT_ID, process.env.GOOGLE_DRIVE_CLIENT_SECRET, refreshToken]);
+  if (token && tokenCredentials === credentialKey && Date.now() < expiresAt) return token;
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_DRIVE_CLIENT_ID,
       client_secret: process.env.GOOGLE_DRIVE_CLIENT_SECRET,
-      refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN,
+      refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
     signal: AbortSignal.timeout(8000),
   });
-  if (!response.ok) throw fail('Google Drive authorization failed. Check the server credentials.', 503);
   const data = await response.json();
+  if (!response.ok) throw Object.assign(fail('Google Drive authorization failed. Check the server credentials.', 503), { code: data.error });
   if (typeof data.access_token !== 'string' || !Number.isFinite(data.expires_in)) throw fail('Google Drive authorization failed.', 503);
   token = data.access_token;
+  tokenCredentials = credentialKey;
   expiresAt = Date.now() + (data.expires_in - 60) * 1000;
   return token;
 }
 
-async function driveFetch(url, options = {}) {
+async function driveFetch(url, options = {}, retry = true) {
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -49,6 +55,10 @@ async function driveFetch(url, options = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && retry) {
+      invalidateAccessToken();
+      return driveFetch(url, options, false);
+    }
     const errorBody = await response.text();
 
     console.error('========================================');

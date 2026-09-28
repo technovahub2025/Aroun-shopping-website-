@@ -1,5 +1,11 @@
 # Google Drive product images
 
+Connections made through the admin Reconnect button are now saved in MongoDB, keyed by the OAuth client ID. Deploy this update and reconnect once to save the account; subsequent server restarts and deployments reuse the saved refresh token. Keep the same MongoDB database and OAuth client configuration across deployments. Database write failures fail the connection flow instead of reporting a connection that will be lost on restart. Tokens are backend-only secrets; restrict access to the database and its backups.
+
+The saved token takes precedence over `GOOGLE_DRIVE_REFRESH_TOKEN`; the environment setting remains a fallback when no database connection record exists. Access tokens refresh automatically, and a Drive request rejected with HTTP 401 is retried once with a fresh token. Folder access and temporary status-check failures are displayed separately from account disconnection.
+
+For persistent use, change the Google OAuth app's publishing status from **Testing** to **In production**, complete any verification Google requires, and reconnect afterward. Drive refresh tokens issued in Testing expire after seven days. User revocation and Google account policies can still require reconnection; no application can guarantee a connection forever. See [Google's refresh token expiration rules](https://developers.google.com/identity/protocols/oauth2#expiration).
+
 Requires Node.js 22 or newer. No additional npm dependencies are needed.
 
 1. In [Google Cloud Console](https://console.cloud.google.com/), enable the Google Drive API. Configure the OAuth consent screen and add the shop owner's Google account as a test user while testing.

@@ -3,60 +3,9 @@ const crypto = require('node:crypto');
 
 const router = express.Router();
 
-/*
-|--------------------------------------------------------------------------
-| Check whether the required Drive configuration exists
-|--------------------------------------------------------------------------
-*/
-function isConfigured() {
-  return Boolean(
-    process.env.GOOGLE_DRIVE_CLIENT_ID &&
-    process.env.GOOGLE_DRIVE_CLIENT_SECRET &&
-    process.env.GOOGLE_DRIVE_REFRESH_TOKEN &&
-    process.env.GOOGLE_DRIVE_FOLDER_ID
-  );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Get an access token using the existing refresh token
-|--------------------------------------------------------------------------
-*/
-async function getAccessToken() {
-  if (
-    !process.env.GOOGLE_DRIVE_CLIENT_ID ||
-    !process.env.GOOGLE_DRIVE_CLIENT_SECRET ||
-    !process.env.GOOGLE_DRIVE_REFRESH_TOKEN
-  ) {
-    throw new Error('Google Drive credentials are not configured.');
-  }
-
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      client_id: process.env.GOOGLE_DRIVE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_DRIVE_CLIENT_SECRET,
-      refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN,
-      grant_type: 'refresh_token',
-    }),
-    signal: AbortSignal.timeout(10000),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok || !data.access_token) {
-    throw new Error(
-      data.error_description ||
-      data.error ||
-      'Unable to authorize Google Drive.'
-    );
-  }
-
-  return data.access_token;
-}
+const drive = require('../utils/googleDrive');
+const credentials = require('../utils/driveCredentials');
+const getAccessToken = drive.accessToken;
 
 /*
 |--------------------------------------------------------------------------
@@ -66,18 +15,10 @@ async function getAccessToken() {
 router.get('/status', async (req, res) => {
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || null;
 
-  if (!isConfigured()) {
-    return res.json({
-      success: true,
-      configured: false,
-      connected: false,
-      email: null,
-      folderAccessible: false,
-      folderId,
-    });
-  }
-
   try {
+    if (!process.env.GOOGLE_DRIVE_CLIENT_ID || !process.env.GOOGLE_DRIVE_CLIENT_SECRET || !(await credentials.getRefreshToken())) {
+      return res.json({ success: true, configured: false, connected: false, email: null, folderAccessible: false, folderId });
+    }
     const accessToken = await getAccessToken();
 
     /*
@@ -94,6 +35,7 @@ router.get('/status', async (req, res) => {
     );
 
     if (!aboutResponse.ok) {
+      if (aboutResponse.status === 401) drive.invalidateAccessToken();
       throw new Error('Unable to access the Drive account.');
     }
 
@@ -106,7 +48,7 @@ router.get('/status', async (req, res) => {
     /*
      * Check whether the configured folder is accessible.
      */
-    let folderAccessible = false;
+    let folderAccessible = !process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     if (folderId) {
       const folderResponse = await fetch(
@@ -134,6 +76,9 @@ router.get('/status', async (req, res) => {
     });
   } catch (error) {
     console.error('Drive status error:', error.message);
+    if (!['invalid_grant', 'invalid_client', 'STORAGE_NOT_CONFIGURED'].includes(error.code)) {
+      return res.status(503).json({ success: false, message: 'Unable to check Google Drive right now. Please retry.' });
+    }
 
     return res.json({
       success: true,
@@ -274,21 +219,8 @@ router.get('/callback', async (req, res) => {
       );
     }
 
-    /*
-     * IMPORTANT:
-     *
-     * Your existing upload utility reads
-     * GOOGLE_DRIVE_REFRESH_TOKEN from process.env.
-     *
-     * The callback cannot permanently modify the .env file
-     * on the server. Therefore the refresh token needs to be
-     * saved using your existing deployment/environment setup.
-     *
-     * For the current local test, expose the token through
-     * the process environment.
-     */
-    process.env.GOOGLE_DRIVE_REFRESH_TOKEN =
-      tokenData.refresh_token;
+    await credentials.saveRefreshToken(tokenData.refresh_token);
+    drive.invalidateAccessToken();
 
     /*
      * Verify the newly authorized account.
@@ -310,7 +242,7 @@ router.get('/callback', async (req, res) => {
     /*
      * Verify the configured folder.
      */
-    let folderAccessible = false;
+    let folderAccessible = !process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     if (process.env.GOOGLE_DRIVE_FOLDER_ID) {
       const folderResponse = await fetch(
@@ -390,7 +322,7 @@ router.get('/test', async (req, res) => {
 
     const aboutData = await aboutResponse.json();
 
-    let folderAccessible = false;
+    let folderAccessible = !process.env.GOOGLE_DRIVE_FOLDER_ID;
 
     if (process.env.GOOGLE_DRIVE_FOLDER_ID) {
       const folderResponse = await fetch(
