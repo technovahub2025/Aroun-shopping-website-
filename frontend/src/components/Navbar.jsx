@@ -37,6 +37,7 @@ const Navbar = () => {
     password: "",
   });
   const [focusedField, setFocusedField] = useState(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const user = useSelector((state) => state.user.user);
   const cartItems = useSelector((state) => state.cart?.items || []);
@@ -49,6 +50,7 @@ const Navbar = () => {
     setAuthMode("register");
     setError("");
     setFormData({ name: "", phone: "", password: "" });
+    setConfirmPassword("");
   };
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
@@ -177,10 +179,46 @@ const Navbar = () => {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (formData.phone.length !== 10) {
+      setError("Please enter a valid 10-digit phone number");
+      return;
+    }
+    if (formData.password.length < 6) {
+      setError("New password must be at least 6 characters");
+      return;
+    }
+    if (formData.password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    try {
+      const { data } = await API.post("/auth/forgot-password", {
+        phone: toIndianE164(formData.phone),
+      });
+      await API.post("/auth/reset-password", {
+        token: data.resetToken,
+        newPassword: formData.password,
+      });
+      toast.success("Password updated. Please log in with your new password.");
+      setAuthMode("login");
+      setError("");
+      setFormData({ name: "", phone: formData.phone, password: "" });
+      setConfirmPassword("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not reset password. Please try again.");
+    }
+  };
+
   const switchAuthMode = (mode) => {
     setAuthMode(mode);
     setError("");
     setFormData({ name: "", phone: "", password: "" });
+    setConfirmPassword("");
   };
 
   return (
@@ -471,11 +509,15 @@ const Navbar = () => {
 
             {/* Modal Title */}
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
-              {authMode === "register" ? "Register" : "Login"}
+              {authMode === "register"
+                ? "Register"
+                : authMode === "forgot"
+                  ? "Forgot password"
+                  : "Login"}
             </h2>
 
             {/* Auth Mode Toggle */}
-            <div className="flex gap-2 mb-6">
+            {authMode !== "forgot" && <div className="flex gap-2 mb-6">
               <button
                 onClick={() => switchAuthMode("register")}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${
@@ -496,7 +538,7 @@ const Navbar = () => {
               >
                 Login
               </button>
-            </div>
+            </div>}
 
             {/* Error Message */}
             {error && (
@@ -738,7 +780,52 @@ const Navbar = () => {
                     Register here
                   </button>
                 </p>
+                <button
+                  onClick={() => switchAuthMode("forgot")}
+                  className="block mx-auto text-sm text-green-600 hover:text-green-700 font-medium"
+                >
+                  Forgot password?
+                </button>
               </div>
+            )}
+
+            {authMode === "forgot" && (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <p className="text-sm text-gray-600">Enter your registered phone number and choose a new password.</p>
+                <label className="block text-sm font-medium text-gray-700">
+                  Phone number
+                  <div className="mt-1 flex">
+                    <span className="flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-600">+91</span>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setFormData((current) => ({ ...current, phone: value }));
+                        setError("");
+                      }}
+                      maxLength={10}
+                      className="w-full rounded-r-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none"
+                      placeholder="10 digit phone number"
+                      required
+                    />
+                  </div>
+                </label>
+                <label className="block text-sm font-medium text-gray-700">
+                  New password
+                  <input type="password" value={formData.password} onChange={(e) => setFormData((current) => ({ ...current, password: e.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none" minLength={6} required />
+                </label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Confirm new password
+                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none" minLength={6} required />
+                </label>
+                <button type="submit" className="w-full rounded-lg bg-green-600 py-2 text-white font-medium transition hover:bg-green-700">
+                  Update password
+                </button>
+                <button type="button" onClick={() => switchAuthMode("login")} className="block mx-auto text-sm text-green-600 hover:text-green-700 font-medium">
+                  Back to login
+                </button>
+              </form>
             )}
           </div>
         </div>
