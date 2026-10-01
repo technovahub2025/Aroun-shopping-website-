@@ -1,5 +1,11 @@
 import React, { Suspense } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation
+} from "react-router-dom";
+
 import apiClient from "../api/apiClient";
 import orderApi from "../api/orderApi";
 import { store } from "./app/store";
@@ -11,6 +17,8 @@ import BottomNav from "./components/BottomNav";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ChatBot from "./components/ChatBot";
+import BackToTop from "./components/BackToTop";
+import WhatsAppButton from "./components/WhatsAppButton";
 
 // Pages
 import Home from "./pages/Home";
@@ -20,11 +28,15 @@ import ProductDetails from "./pages/ProductDetails";
 import Orders from "./pages/Orders";
 import Profile from "./pages/Profile";
 import LayoutDashboard from "./pages/admin/LayoutDashboard";
-import BackToTop from "./components/BackToTop";
-import WhatsAppButton from "./components/WhatsAppButton";
+
+// Policy Pages
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
+import CookiePolicy from "./pages/CookiePolicy";
 
 // Lazy-loaded pages
-const Checkout = React.lazy(() => import('./pages/Checkout'));
+const Checkout = React.lazy(() => import("./pages/Checkout"));
+
 
 // Small wrapper to control navbar visibility
 const AppContent = () => {
@@ -35,15 +47,54 @@ const AppContent = () => {
 
   return (
     <>
-      {!hideNavbar && <Navbar />  }
+      {!hideNavbar && <Navbar />}
 
       <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/product" element={<ProductList />} />
-        <Route path="/products/:id" element={<ProductDetails />} />
 
-        {/* Protected Routes */}
+        {/* =========================
+            Public Routes
+        ========================== */}
+
+        <Route
+          path="/"
+          element={<Home />}
+        />
+
+        <Route
+          path="/product"
+          element={<ProductList />}
+        />
+
+        <Route
+          path="/products/:id"
+          element={<ProductDetails />}
+        />
+
+
+        {/* =========================
+            Policy Pages
+        ========================== */}
+
+        <Route
+          path="/privacy-policy"
+          element={<PrivacyPolicy />}
+        />
+
+        <Route
+          path="/terms-of-service"
+          element={<TermsOfService />}
+        />
+
+        <Route
+          path="/cookie-policy"
+          element={<CookiePolicy />}
+        />
+
+
+        {/* =========================
+            Protected Routes
+        ========================== */}
+
         <Route
           path="/cart"
           element={
@@ -52,6 +103,7 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/checkout"
           element={
@@ -63,7 +115,11 @@ const AppContent = () => {
           }
         />
 
-        {/* Orders Route */}
+
+        {/* =========================
+            Orders Route
+        ========================== */}
+
         <Route
           path="/orders"
           element={
@@ -73,7 +129,11 @@ const AppContent = () => {
           }
         />
 
-        {/* Profile Route */}
+
+        {/* =========================
+            Profile Route
+        ========================== */}
+
         <Route
           path="/profile"
           element={
@@ -82,6 +142,7 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/profile/settings"
           element={
@@ -91,7 +152,11 @@ const AppContent = () => {
           }
         />
 
-        {/* Admin Dashboard (with Sidebar Layout) */}
+
+        {/* =========================
+            Admin Dashboard
+        ========================== */}
+
         <Route
           path="/admin/*"
           element={
@@ -100,7 +165,12 @@ const AppContent = () => {
             </ProtectedRoute>
           }
         />
+
       </Routes>
+
+
+      {/* Footer and other components */}
+
       {!hideNavbar && (
         <>
           <BottomNav />
@@ -114,32 +184,55 @@ const AppContent = () => {
   );
 };
 
+
 const App = () => {
+
   // Persist auth check on app load
   React.useEffect(() => {
-    const token = localStorage.getItem('token');
+
+    const token = localStorage.getItem("token");
+
     if (token) {
+
       const checkAuth = async () => {
+
         try {
+
           const { data } = await apiClient.get("/auth/me");
+
           store.dispatch(setUser(data.user));
-          await orderApi.prefetchForRole(data.user?.role);
+
+          await orderApi.prefetchForRole(
+            data.user?.role
+          );
+
         } catch (error) {
-          console.error('Initial auth check failed:', error);
-          localStorage.removeItem('token');
+
+          console.error(
+            "Initial auth check failed:",
+            error
+          );
+
+          localStorage.removeItem("token");
         }
       };
+
       checkAuth();
     }
+
   }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-50 pb-[72px] md:pb-0">
+
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>
+
     </div>
   );
 };
+
 
 export default App;
