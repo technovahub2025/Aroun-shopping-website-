@@ -263,7 +263,7 @@ const Navbar = () => {
         {/* Top Info Bar */}
         <div className="bg-green-500 text-white text-[16px] md:text-sm px-4 py-2 flex flex-col md:flex-row md:justify-between md:items-center gap-1 md:gap-0 text-center md:text-left">
           <p className="uppercase font-bold text-[16px]  tracking-wide">
-            🚚 Free Shipping on Orders Over ₹500
+            🚚 Free Shipping for all orders..!!!
           </p>
 
           <div className="flex justify-center font-bold md:justify-start items-center gap-4">
