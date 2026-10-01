@@ -5,7 +5,7 @@ const botResponses = {
   default: "I'm not sure about that. You can ask me about orders, products, shipping, or contact support.",
   hello: "Hello! 👋 How can I help you today?",
   support: "You can reach our support team at support@example.com or call us at +91 9876543210 during business hours.",
-  shipping: "We offer free shipping on orders above ₹500. Standard delivery takes 3-5 business days. Express delivery (₹100) takes 1-2 business days.",
+  shipping: "We offer free shipping on all orders. Standard delivery takes 3-5 business days.",
   orders: "You can track your order in the Orders section after logging in. For order issues, please contact support.",
   payment: "We accept all major credit/debit cards, UPI (GPay, PhonePe, Paytm), and Cash on Delivery.",
   products: "We offer a wide range of grocery products. Browse categories on our homepage or use the search bar to find specific items.",

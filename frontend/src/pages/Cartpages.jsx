@@ -9,7 +9,7 @@ const Cartpages = () => {
   const items = useSelector((state) => state.cart?.items || []);
 
   const subtotal = items.reduce((s, it) => s + (it.price || 0) * (it.quantity || 1), 0);
-  const shipping = items.length > 0 ? 10 : 0;
+  const shipping = 0;
   const total = subtotal + shipping;
 
   return (

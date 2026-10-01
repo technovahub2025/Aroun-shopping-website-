@@ -59,7 +59,7 @@ const Checkout = () => {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const shippingFees = subtotal > 500 ? 0 : 10;
+  const shippingFees = 0;
   const total = subtotal + shippingFees;
 
   const handleInputChange = (e) => {
