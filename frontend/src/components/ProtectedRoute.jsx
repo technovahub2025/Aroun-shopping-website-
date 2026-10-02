@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import apiClient from '../../api/apiClient';
 import { setUser, setLoading } from '../redux/userSlice';
 
-const ProtectedRoute = ({ children }) => {
+const ProtectedRoute = ({ children, requiredRole }) => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user.user);
   const [isChecking, setIsChecking] = useState(true);
@@ -46,6 +46,7 @@ const ProtectedRoute = ({ children }) => {
     return <Navigate to="/" />;
   }
 
+  if (requiredRole && user?.role !== requiredRole) return <Navigate to="/" replace />;
   return children;
 };
 

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { ORDER_STATUSES, normalizeOrderStatus } = require('../utils/orderStatus');
 
 const orderItemSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -17,6 +18,8 @@ const orderSchema = new mongoose.Schema({
     email: String,
     street: String,
     city: String,
+    state: String,
+    country: String,
     zipcode: String,
     phone: String,
   },
@@ -26,7 +29,7 @@ const orderSchema = new mongoose.Schema({
     transactionId: String,
   },
   totalPrice: { type: Number, required: true },
-  status: { type: String, enum: ['created','processing','shipped','delivered','cancelled'], default: 'created' },
-}, { timestamps: true });
+  status: { type: String, enum: ORDER_STATUSES, default: 'Pending', get: normalizeOrderStatus },
+}, { timestamps: true, toJSON: { getters: true }, toObject: { getters: true } });
 
 module.exports = mongoose.model('Order', orderSchema);

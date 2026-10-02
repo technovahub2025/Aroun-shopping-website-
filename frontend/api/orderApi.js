@@ -68,20 +68,8 @@ const orderApi = {
     clearOrderCache();
     return response;
   },
-  listAll: async (options = {}) => {
-    const { forceRefresh = false } = options;
-    const cacheKey = `${CACHE_PREFIX}all`;
-    if (!forceRefresh) {
-      const cachedData = readCache(cacheKey);
-      if (cachedData) {
-        return { data: cachedData, fromCache: true };
-      }
-    }
-
-    const response = await apiClient.get(BASE);
-    writeCache(cacheKey, response.data);
-    return response;
-  }, // admin
+  // Always authorize and fetch fresh admin data; do not persist customer details in session storage.
+  listAll: () => apiClient.get(BASE), // admin
   update: async (id, payload) => {
     const response = await apiClient.put(`${BASE}/${id}`, payload);
     clearOrderCache();

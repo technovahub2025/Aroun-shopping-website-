@@ -3,6 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 // import DashboardHome from './DashboardHome';
 const Products = lazy(() => import('./Products'));
 const DeletedProducts = lazy(() => import('./DeletedProducts'));
+const AdminOrders = lazy(() => import('./Orders'));
+const OrderDetails = lazy(() => import('./OrderDetails'));
 
 const AdminRoutes = () => {
   return (
@@ -11,6 +13,8 @@ const AdminRoutes = () => {
       {/* <Route path="/" element={<DashboardHome />} /> */}
       <Route path="/" element={<Products />} />
       <Route path="deleted-products" element={<DeletedProducts />} />
+      <Route path="orders" element={<AdminOrders />} />
+      <Route path="orders/:id" element={<OrderDetails />} />
       {/* <Route path="users" element={<div>Users Management (Coming Soon)</div>} />
       <Route path="settings" element={<div>Settings (Coming Soon)</div>} /> */}
     </Routes>

@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import orderApi from '../../api/orderApi';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
+import { orderStatus, orderStatuses } from '../utils/orderStatus';
 
-const statusOptions = ['created', 'processing', 'shipped', 'delivered', 'cancelled'];
+const statusOptions = orderStatuses;
 
 const Orders = () => {
   const user = useSelector((s) => s.user?.user);
@@ -23,7 +24,7 @@ const Orders = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const resp = user?.role === 'admin' ? await orderApi.listAll() : await orderApi.myOrders();
+      const resp = user?.role === 'admin' ? await orderApi.listAll({ forceRefresh: true }) : await orderApi.myOrders({ forceRefresh: true });
       setOrders(resp.data || []);
     } catch (err) {
       console.error('Failed to load orders', err);
@@ -43,9 +44,9 @@ const Orders = () => {
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await orderApi.update(orderId, { status: newStatus });
+      const { data } = await orderApi.update(orderId, { status: newStatus });
+      setOrders(current => current.map(order => order._id === orderId ? data : order));
       toast.success('Order status updated');
-      fetchOrders();
     } catch (err) {
       console.error(err);
       toast.error('Failed to update order');
@@ -101,8 +102,8 @@ const Orders = () => {
                   <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${order.payment?.status === 'paid' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
                     {order.payment?.status === 'paid' ? 'Paid' : order.payment?.status || 'Pending'}
                   </span>
-                  <span className={`ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${order.status === 'delivered' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
-                    {order.status}
+                  <span className={`ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${orderStatus(order.status) === 'Delivered' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}>
+                    {orderStatus(order.status)}
                   </span>
                 </div>
               </div>
@@ -115,14 +116,14 @@ const Orders = () => {
                 {user?.role === 'admin' && (
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Change status</label>
-                    <select value={order.status} onChange={(e) => handleStatusChange(order._id, e.target.value)} className="border rounded px-2 py-1 text-sm">
+                    <select value={orderStatus(order.status)} onChange={(e) => handleStatusChange(order._id, e.target.value)} className="border rounded px-2 py-1 text-sm">
                       {statusOptions.map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
                   </div>
                 )}
-                {user?.role !== 'admin' && ['created', 'processing'].includes(order.status) && (
+                {user?.role !== 'admin' && ['Pending', 'Confirmed', 'Processing'].includes(orderStatus(order.status)) && (
                   <button
                     type="button"
                     onClick={() => handleCancelOrder(order)}
@@ -156,6 +157,7 @@ const Orders = () => {
                 <div className="font-medium">{order.shipping?.firstName} {order.shipping?.lastName}</div>
                 <div className="text-sm text-gray-600">{order.shipping?.street}</div>
                 <div className="text-sm text-gray-600">{order.shipping?.city} - {order.shipping?.zipcode}</div>
+                <div className="text-sm text-gray-600">{order.shipping?.state} {order.shipping?.country}</div>
                 <div className="text-sm text-gray-600">Phone: {order.shipping?.phone}</div>
                 <div className="text-sm text-gray-600">Email: {order.shipping?.email}</div>
               </div>

@@ -139,6 +139,10 @@ const LayoutDashboard = () => {
 
           {/* Navigation */}
           <nav className="mt-4 flex flex-col space-y-1 px-4 flex-shrink-0">
+            <Link to="/admin/orders" onClick={() => setIsOpen(false)} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200">
+              <ShoppingCart className="w-5 h-5" />
+              <span>Orders</span>
+            </Link>
             <Link
               to="/admin"
               className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200"
