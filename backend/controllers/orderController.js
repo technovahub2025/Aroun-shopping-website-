@@ -3,7 +3,6 @@ const Cart = require('../models/Cart');
 const Product = require('../models/productModel');
 const mongoose = require('mongoose');
 const { ORDER_STATUSES } = require('../utils/orderStatus');
-const orderEmail = require('../utils/orderEmail');
 const validId = (id) => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
 
 // Create order from cart or items passed in body
@@ -78,10 +77,6 @@ exports.createOrder = async (req, res) => {
     }
 
     res.status(201).json(order);
-    // Email failure must never turn a saved order into a failed checkout.
-    void orderEmail.sendAdminOrderEmail(order).catch(error => {
-      console.error('Admin order email failed', { orderId: String(order._id), code: error.code || 'EMAIL_SEND_FAILED' });
-    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to create order' });

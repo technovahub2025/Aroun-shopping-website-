@@ -20,43 +20,6 @@ images and prices are taken from the catalog; the server computes the total. Sta
 country are now retained in the existing shipping subdocument. Customer cancellation
 continues to work for Pending, Confirmed and Processing, including legacy records.
 
-## Environment and runtime
-
-Use Node.js 20 or later. Install backend dependencies with `npm.cmd ci` from `backend`.
-Copy the variable names from `.env.orders.example` into the existing `backend/.env`:
-
-```dotenv
-ADMIN_EMAIL=
-SMTP_HOST=
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASSWORD=
-SMTP_FROM=
-```
-
-Set the recipient and a sender accepted by your SMTP provider. Provide both SMTP_USER
-and SMTP_PASSWORD for authenticated SMTP; omit both only for a configured relay that
-does not require authentication. Port 465 uses immediate TLS; other ports use
-Nodemailer's STARTTLS behavior. Certificate verification remains enabled.
-See the [Nodemailer SMTP documentation](https://nodemailer.com/smtp).
-Restart the backend after changing environment variables. Existing MONGO_URL, JWT_SECRET
-and payment configuration remain required as before. No real credentials are in the example.
-
-## Email behavior
-
-`utils/orderEmail.js` adds the project's first SMTP email service using Nodemailer.
-It reads environment variables lazily (the server loads dotenv after importing routes).
-After the order saves and the 201 response is sent, it attempts one plain-text admin
-email. The message contains the saved order ID, customer contact details, products,
-quantities, INR total, payment status, complete address, order date in IST and status.
-Missing configuration and SMTP errors log the order ID and an error code, without
-credentials. They never roll back an order or change checkout success. Cart cleanup
-failure likewise no longer turns a saved order into a failed checkout response.
-
-Delivery is best effort within the existing long-running Express process, with bounded
-SMTP timeouts. There is no durable queue or automatic retry; process termination after
-the response can lose a notification. An SMTP acceptance is not proof of inbox delivery.
-
 ## Database compatibility
 
 The existing `status` field now defaults to Pending and accepts exactly:

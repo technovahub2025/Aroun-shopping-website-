@@ -5,7 +5,6 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/productModel');
-const email = require('../utils/orderEmail');
 const controller = require('../controllers/orderController');
 const { ORDER_STATUSES } = require('../utils/orderStatus');
 const { protect, admin } = require('../middleware/authmiddleware');
@@ -33,35 +32,8 @@ test('legacy database statuses serialize using the new vocabulary', () => {
   for (const [legacy, expected] of Object.entries({ created: 'Pending', processing: 'Processing', shipped: 'Shipped', delivered: 'Delivered', cancelled: 'Cancelled' })) {
     assert.equal(Order.hydrate({ _id: id, status: legacy }).toJSON().status, expected);
   }
-});
 
-test('creation saves trusted product data, responds, then sends email; SMTP failure does not undo success', async () => {
-  const steps = [];
-  mock.method(Product, 'find', async () => [{ _id: productId, title: 'T-Shirt', price: 650, images: [] }]);
-  mock.method(Order, 'create', async data => { steps.push('saved'); return new Order({ ...data, _id: id, createdAt: new Date() }); });
-  mock.method(Cart, 'findOneAndDelete', async () => steps.push('cart cleared'));
-  mock.method(email, 'sendAdminOrderEmail', async order => { steps.push('email'); assert.equal(order.status, 'Pending'); throw new Error('SMTP down'); });
-  const log = mock.method(console, 'error', () => {});
-  const res = response();
-  res.json = function (body) { steps.push('response'); this.body = body; return this; };
-  await controller.createOrder(request(payload()), res);
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(res.statusCode, 201);
-  assert.equal(res.body.totalPrice, 1300);
-  assert.equal(res.body.items[0].name, 'T-Shirt');
-  assert.deepEqual(steps, ['saved', 'cart cleared', 'response', 'email']);
-  assert.equal(log.mock.callCount(), 1);
-});
 
-test('failed database save sends no email', async () => {
-  mock.method(Product, 'find', async () => [{ _id: productId, title: 'T-Shirt', price: 650 }]);
-  mock.method(Order, 'create', async () => { throw new Error('DB unavailable'); });
-  const send = mock.method(email, 'sendAdminOrderEmail', async () => {});
-  mock.method(console, 'error', () => {});
-  const res = response();
-  await controller.createOrder(request(payload()), res);
-  assert.equal(res.statusCode, 500);
-  assert.equal(send.mock.callCount(), 0);
 });
 
 test('cart fallback remains supported and cleanup failure does not fail a saved order', async () => {
@@ -69,12 +41,10 @@ test('cart fallback remains supported and cleanup failure does not fail a saved 
   mock.method(Product, 'find', async () => [{ _id: productId, title: 'T-Shirt', price: 650 }]);
   mock.method(Order, 'create', async data => new Order({ ...data, createdAt: new Date() }));
   mock.method(Cart, 'findOneAndDelete', async () => { throw new Error('cleanup failed'); });
-  const send = mock.method(email, 'sendAdminOrderEmail', async () => {});
   mock.method(console, 'error', () => {});
   const res = response();
   await controller.createOrder(request({ shipping, paymentMethod: 'cod' }), res);
   assert.equal(res.statusCode, 201);
-  assert.equal(send.mock.callCount(), 1);
 });
 
 test('invalid shipping, items, product IDs and quantities are rejected before saving', async () => {
@@ -171,10 +141,4 @@ test('admin and customer lists use the same Order model with correct scope', asy
   assert.deepEqual(filters, [undefined, { user: id }]);
   assert.deepEqual(all.body, orders);
   assert.deepEqual(mine.body, orders);
-});
-
-test('email contains saved order ID, customer, products, totals, payment, address, date and status', () => {
-  const mail = email.buildOrderEmail({ _id: id, shipping, items: [{ name: 'T-Shirt', quantity: 2 }], totalPrice: 1300, payment: { status: 'paid' }, createdAt: '2026-10-02T10:00:00Z', status: 'Pending' });
-  assert.equal(mail.subject, `New Order Received - Order #${id}`);
-  for (const value of [id, 'Rahul K', shipping.email, shipping.phone, 'T-Shirt × 2', '1,300.00', 'paid', shipping.street, shipping.city, shipping.zipcode, shipping.country, '2026', 'IST', 'Pending']) assert.ok(mail.text.includes(value), value);
 });
