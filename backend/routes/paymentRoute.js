@@ -6,6 +6,7 @@ const {
   verifyRazorpayPayment,
 } = require('../controllers/paymentController');
 const { protect } = require('../middleware/authmiddleware');
+router.post('/webhook', require('../controllers/paymentController').razorpayWebhook);
 
 // Protected payment endpoint (dummy)
 router.post('/payment/create-order', protect, processPayment);

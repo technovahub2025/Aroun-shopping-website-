@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const push = require('../services/pushService');
 const Cart = require('../models/Cart');
 const Product = require('../models/productModel');
 const mongoose = require('mongoose');
@@ -153,6 +154,11 @@ exports.updateOrderStatus = async (req, res) => {
     order.status = status;
 
     await order.save();
+    if (status === 'Confirmed') {
+      await push.enqueue({ key: `order-confirmed:${order._id}`, user: order.user,
+        title: 'Order confirmed', body: 'Your order has been confirmed.',
+        data: { type: 'order_confirmed', orderId: String(order._id) } });
+    }
     res.json(order);
   } catch (err) {
     console.error(err);

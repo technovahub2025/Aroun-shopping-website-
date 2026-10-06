@@ -1,4 +1,6 @@
 const express = require('express');
+require('dotenv').config();
+const pushService = require('./services/pushService');
 const mongoose = require('mongoose');
 
 const cookieParser = require('cookie-parser');
@@ -13,11 +15,11 @@ const notificationRoutes = require('./routes/notificationRoute');
 const googleDriveRoutes = require('./routes/googleDriveRoute');
 const { checkAndNotifyLowStock } = require('./controllers/notificationController');
 
-require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(express.json()); 
+app.use('/api/payment/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json());
 app.use(cookieParser());
 // Enable CORS for all origins
 app.use(cors({
@@ -27,7 +29,7 @@ app.use(cors({
 
 // Connect DB
 mongoose.connect(process.env.MONGO_URL)
-  .then(() => console.log('MongoDB connected'))
+  .then(() => { console.log('MongoDB connected'); pushService.startWorker(); })
   .catch(err => console.log(err));
 
 // Routes
@@ -38,6 +40,7 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/push', require('./routes/pushRoute'));
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/google-drive', googleDriveRoutes);
 
