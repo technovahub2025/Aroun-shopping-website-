@@ -43,7 +43,7 @@ const ProductList = () => {
   const isAdmin = user?.role === "admin";
   const sortNames = { Relevant: 'relevant', 'Price: Low to High': 'price-asc', 'Price: High to Low': 'price-desc', Newest: 'newest' };
   const page = useCatalogPagination(productApi.getCatalogBatch, {
-    limit: 60, search, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
+    limit: 20, search, sort: sortNames[sortBy], categories: JSON.stringify(categoryFilters), types: JSON.stringify(typeFilters),
   });
   const { items: currentProducts, loading, setError, reload } = page;
   const facets = useCatalogFacets();
@@ -258,7 +258,7 @@ const ProductList = () => {
             <p className="text-center text-gray-500 py-10">No products found.</p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
-              {currentProducts.map((product) => (
+              {currentProducts.map((product, index) => (
                 <Link
                   key={product._id}
                   to={`/products/${product._id}`}
@@ -268,7 +268,7 @@ const ProductList = () => {
                     <img
                       src={resolveImageUrl(product.images?.[0] || "/placeholder.png")}
                       alt={product.title}
-                      loading="lazy"
+                      loading={index < 5 ? "eager" : "lazy"}
                       decoding="async"
                       className="object-contain w-full h-full group-hover:scale-110 transition-transform duration-500"
                     />
@@ -305,7 +305,7 @@ const ProductList = () => {
             {page.error} <button type="button" onClick={page.retry} disabled={loading} className="ml-2 underline">Retry</button>
           </div>}
           <div className="mt-8">
-            <p role="status" className="mb-3 text-center text-sm text-gray-600">Page {page.page} of {page.totalPages} &middot; 60 per page</p>
+            <p role="status" className="mb-3 text-center text-sm text-gray-600">Page {page.page} of {page.totalPages} &middot; 20 per page</p>
             <NumberedPagination page={page.page} totalPages={page.totalPages} loading={loading}
               onPageChange={value => { page.goToPage(value); listRef.current?.scrollIntoView({ block: 'start' }); }} />
           </div>

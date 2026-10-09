@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import productApi from '../../api/productApi';
 
 export default function useCatalogFacets() {
-  const [facets, setFacets] = useState({ categories: [], types: [] });
+  const [facets, setFacets] = useState(() => productApi.getCachedCatalogFacets() || { categories: [], types: [] });
   const [revision, setRevision] = useState(0);
   const [error, setError] = useState('');
   useEffect(() => {

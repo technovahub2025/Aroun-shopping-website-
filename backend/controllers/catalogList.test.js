@@ -27,7 +27,7 @@ function fakeFind(t, source = rows) {
   const reads = [];
   t.mock.method(Product, 'find', query => {
     const read = { query }; reads.push(read);
-    return { setOptions() { return this; }, select() { return this; },
+    return { setOptions() { return this; }, select(value) { read.projection = value; return this; },
       sort(value) { read.sort = value; return this; }, limit(value) { read.limit = value; return this; },
       async lean() {
         return source.filter(row => matches(row, query)).sort((a, b) => {
@@ -90,6 +90,8 @@ test('product batch size is capped', async t => {
   const reads = fakeFind(t);
   await getCatalog({ query: { limit: '999' } }, response());
   assert.equal(reads[0].limit, 61);
+  assert.deepEqual(reads[0].projection.images, { $slice: 1 });
+  assert.equal(reads[0].projection.description, undefined);
 });
 
 test('category pages fetch at most six previews per returned category', async t => {
@@ -105,6 +107,7 @@ test('category pages fetch at most six previews per returned category', async t 
   assert.equal(pipeline.at(-1).$limit, 2);
   assert.equal(reads.length, 1);
   assert.equal(reads[0].limit, 6);
+  assert.deepEqual(reads[0].projection, { _id: 1, title: 1, images: { $slice: 1 } });
   assert.equal(res.body.items[0].count, 100);
   assert.equal(res.body.nextCursor, 'B');
   assert.equal(res.body.hasMore, true);

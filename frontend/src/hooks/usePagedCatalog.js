@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function usePagedCatalog(fetchPage, params = {}) {
   const paramsKey = JSON.stringify(params);
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(() => fetchPage.getCached?.(params)?.items || []);
+  const [loading, setLoading] = useState(() => !fetchPage.getCached?.(params)?.items?.length);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState("");
@@ -15,8 +15,9 @@ export default function usePagedCatalog(fetchPage, params = {}) {
   useEffect(() => {
     const controller = new AbortController();
     const session = { busy: false, cursor: null, more: true, first: true };
-    setItems([]);
-    setLoading(true);
+    const snapshot = fetchPage.getCached?.(JSON.parse(paramsKey));
+    setItems(snapshot?.items || []);
+    setLoading(!snapshot?.items?.length);
     setLoadingMore(false);
     setHasMore(false);
     setError("");
@@ -24,7 +25,7 @@ export default function usePagedCatalog(fetchPage, params = {}) {
       if (session.busy || !session.more || controller.signal.aborted) return;
       session.busy = true;
       setError("");
-      if (session.first) setLoading(true);
+      if (session.first) setLoading(!snapshot?.items?.length);
       else setLoadingMore(true);
       try {
         const { data } = await fetchPage({
@@ -35,7 +36,9 @@ export default function usePagedCatalog(fetchPage, params = {}) {
         if (!Array.isArray(data.items) || (data.hasMore && !data.nextCursor)) {
           throw new Error("Invalid product list response");
         }
+        const first = session.first;
         setItems(previous => {
+          if (first) return data.items;
           const seen = new Set(previous.map(product => product._id));
           return [...previous, ...data.items.filter(product => !seen.has(product._id))];
         });

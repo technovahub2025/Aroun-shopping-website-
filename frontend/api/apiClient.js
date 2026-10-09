@@ -15,6 +15,11 @@ apiClient.interceptors.request.use((config) => {
     delete config.headers["Content-Type"];
   }
   
+  if (config.publicCatalog) {
+    delete config.headers.Authorization;
+    delete config.headers['Content-Type'];
+    return config;
+  }
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

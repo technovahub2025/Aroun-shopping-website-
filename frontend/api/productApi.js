@@ -1,7 +1,9 @@
 import apiClient from "./apiClient";
+import { createPublicCatalogFetcher, clearPublicCatalogCache } from "./publicCatalogCache";
 
 // Base endpoint for products
 const BASE_URL = "/products";
+const fetchFacets = createPublicCatalogFetcher(apiClient, `${BASE_URL}/catalog-facets`);
 const CACHE_PREFIX = "product_api_cache:";
 const CACHE_TTL_MS = 60 * 1000;
 const inMemoryCache = new Map();
@@ -10,6 +12,7 @@ const DELETED_CACHE_KEY = `${CACHE_PREFIX}deleted:list`;
 const CATALOG_SNAPSHOT_KEY = `${CACHE_PREFIX}catalog:snapshot`;
 
 const removeCatalogSnapshot = () => {
+  clearPublicCatalogCache();
   try { localStorage.removeItem(CATALOG_SNAPSHOT_KEY); } catch { /* Storage may be disabled. */ }
 };
 
@@ -81,9 +84,10 @@ const clearProductCache = () => {
 };
 
 const productApi = {
-  getCatalogBatch: (params, config = {}) => apiClient.get(`${BASE_URL}/catalog`, { ...config, params }),
-  getCategoryPreviews: (params, config = {}) => apiClient.get(`${BASE_URL}/category-previews`, { ...config, params }),
-  getCatalogFacets: (config = {}) => apiClient.get(`${BASE_URL}/catalog-facets`, config),
+  getCatalogBatch: createPublicCatalogFetcher(apiClient, `${BASE_URL}/catalog`),
+  getCategoryPreviews: createPublicCatalogFetcher(apiClient, `${BASE_URL}/category-previews`),
+  getCatalogFacets: (config = {}) => fetchFacets({}, config),
+  getCachedCatalogFacets: () => fetchFacets.getCached(),
   getAdminBatch: (params, config = {}) =>
     apiClient.get(`${BASE_URL}/admin/list`, { ...config, params }),
   getCategoryCounts: (config = {}) => apiClient.get(`${BASE_URL}/category-counts`, config),

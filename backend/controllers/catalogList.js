@@ -15,6 +15,9 @@ const listFilter = value => {
 };
 const sorts = { relevant: { _id: 1 }, newest: { createdAt: -1, _id: -1 },
   'price-asc': { price: 1, _id: 1 }, 'price-desc': { price: -1, _id: -1 } };
+// Cards need only one image and no full description. Details use their own endpoint.
+const cardFields = { _id: 1, title: 1, price: 1, mrp: 1, discount: 1, rating: 1,
+  category: 1, type: 1, images: { $slice: 1 }, createdAt: 1, stock: 1 };
 
 exports.getCatalog = async (req, res) => {
   try {
@@ -36,7 +39,7 @@ exports.getCatalog = async (req, res) => {
     }
     const page = parsePage(req.query.page, req.query.cursor);
     if (page !== null) return res.json(await getProductPage(Product, query, sort, limit, page,
-      '_id title description price mrp discount rating category type images createdAt stock'));
+      cardFields));
     const field = Object.keys(sort)[0], comparison = sort[field] === 1 ? '$gt' : '$lt';
     if (req.query.cursor !== undefined) {
       if (typeof req.query.cursor !== 'string' || req.query.cursor.length > 1000) throw invalid();
@@ -54,7 +57,7 @@ exports.getCatalog = async (req, res) => {
       }
     }
     const rows = await Product.find(query).setOptions({ strictQuery: false }).sort(sort)
-      .limit(limit + 1).select('_id title description price mrp discount rating category type images createdAt stock').lean();
+      .limit(limit + 1).select(cardFields).lean();
     const items = rows.slice(0, limit), hasMore = rows.length > limit, last = items.at(-1);
     const nextCursor = hasMore ? Buffer.from(JSON.stringify({ sort: sortName, id: String(last._id), value: last[field] })).toString('base64url') : null;
     res.json({ items, hasMore, nextCursor });
@@ -81,7 +84,7 @@ exports.getCategoryPreviews = async (req, res) => {
     const items = await Promise.all(selected.map(async group => ({
       _id: group._id, name: group._id, count: group.count,
       products: await Product.find({ category: group._id, isDeleted: { $ne: true } })
-        .setOptions({ strictQuery: false }).sort({ _id: 1 }).limit(6).select('_id title images').lean(),
+        .setOptions({ strictQuery: false }).sort({ _id: 1 }).limit(6).select({ _id: 1, title: 1, images: { $slice: 1 } }).lean(),
     })));
     res.json({ items, hasMore, nextCursor: hasMore ? selected.at(-1)._id : null });
   } catch (err) {

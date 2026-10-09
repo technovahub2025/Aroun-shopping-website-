@@ -7,12 +7,14 @@ const {
 } = require("../controllers/productController");
 const { protect, admin } = require("../middleware/authmiddleware");
 const { getCatalog, getCategoryPreviews, getCatalogFacets } = require("../controllers/catalogList");
+const { catalogCache, invalidateCatalog } = require('../middleware/publicCatalogCache');
+router.use(invalidateCatalog);
 
 // CRUD routes
 router.get("/admin/list", protect, admin, require("../controllers/adminProductList"));
-router.get("/catalog", getCatalog);
-router.get("/category-previews", getCategoryPreviews);
-router.get("/catalog-facets", getCatalogFacets);
+router.get("/catalog", catalogCache, getCatalog);
+router.get("/category-previews", catalogCache, getCategoryPreviews);
+router.get("/catalog-facets", catalogCache, getCatalogFacets);
 router.post("/", protect, admin, upload.array("images", 5), createProduct);
 router.get("/", getProducts); // keep public
 router.get("/category-counts", getCategoryCounts);
