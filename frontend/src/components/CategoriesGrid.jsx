@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -59,7 +60,7 @@ const CategoriesCarousel = () => {
             >
               <div className="mt-6 w-28 h-28 rounded-full overflow-hidden bg-white shadow-inner flex items-center justify-center border border-gray-100 p-4">
                 <img
-                  src={cat.products[0]?.images?.[0] || "/placeholder.png"}
+                  src={resolveImageUrl(cat.products[0]?.images?.[0] || "/placeholder.png")}
                   alt={cat.name}
                   loading="lazy"
                   decoding="async"

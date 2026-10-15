@@ -34,10 +34,12 @@ const Navbar = () => {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
+    email: "",
     password: "",
   });
   const [focusedField, setFocusedField] = useState(null);
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const user = useSelector((state) => state.user.user);
   const cartItems = useSelector((state) => state.cart?.items || []);
@@ -49,8 +51,9 @@ const Navbar = () => {
     setShowLoginModal(!showLoginModal);
     setAuthMode("register");
     setError("");
-    setFormData({ name: "", phone: "", password: "" });
+    setFormData({ name: "", phone: "", email: "", password: "" });
     setConfirmPassword("");
+    setResetEmailSent(false);
   };
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
@@ -111,6 +114,10 @@ const Navbar = () => {
       setError("Name is required");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((formData.email || "").trim())) {
+      setError("Please enter a valid email address");
+      return;
+    }
     if (!formData.phone.trim()) {
       setError("Phone number is required");
       return;
@@ -131,6 +138,7 @@ const Navbar = () => {
     try {
       const { data } = await API.post("/auth/register", {
         name: formData.name,
+        email: formData.email.trim(),
         phone: toIndianE164(formData.phone),
         password: formData.password,
       });
@@ -183,32 +191,15 @@ const Navbar = () => {
     e.preventDefault();
     setError("");
 
-    if (formData.phone.length !== 10) {
-      setError("Please enter a valid 10-digit phone number");
-      return;
-    }
-    if (formData.password.length < 6) {
-      setError("New password must be at least 6 characters");
-      return;
-    }
-    if (formData.password !== confirmPassword) {
-      setError("Passwords do not match");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      setError("Please enter a valid email address");
       return;
     }
 
     try {
-      const { data } = await API.post("/auth/forgot-password", {
-        phone: toIndianE164(formData.phone),
-      });
-      await API.post("/auth/reset-password", {
-        token: data.resetToken,
-        newPassword: formData.password,
-      });
-      toast.success("Password updated. Please log in with your new password.");
-      setAuthMode("login");
-      setError("");
-      setFormData({ name: "", phone: formData.phone, password: "" });
-      setConfirmPassword("");
+      const { data } = await API.post("/auth/forgot-password", { email: formData.email.trim() });
+      setResetEmailSent(true);
+      toast.success(data.message);
     } catch (err) {
       setError(err.response?.data?.message || "Could not reset password. Please try again.");
     }
@@ -217,8 +208,9 @@ const Navbar = () => {
   const switchAuthMode = (mode) => {
     setAuthMode(mode);
     setError("");
-    setFormData({ name: "", phone: "", password: "" });
+    setFormData({ name: "", phone: "", email: "", password: "" });
     setConfirmPassword("");
+    setResetEmailSent(false);
   };
 
   return (
@@ -551,6 +543,11 @@ const Navbar = () => {
             {authMode === "register" && (
               <div className="space-y-4">
                 <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email address <span className="text-red-500">*</span></label>
+                  <input type="email" name="email" autoComplete="email" value={formData.email || ""} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 focus:outline-none" placeholder="you@example.com" required />
+                </div>
+
+                <div className="relative">
                   <label
                     className={`block text-sm font-medium mb-1 transition-all duration-300 ${
                       focusedField === "register-name" || formData.name
@@ -791,36 +788,14 @@ const Navbar = () => {
 
             {authMode === "forgot" && (
               <form onSubmit={handleForgotPassword} className="space-y-4">
-                <p className="text-sm text-gray-600">Enter your registered phone number and choose a new password.</p>
+                <p className="text-sm text-gray-600">Enter your account email and we’ll send you a secure link to choose a new password.</p>
                 <label className="block text-sm font-medium text-gray-700">
-                  Phone number
-                  <div className="mt-1 flex">
-                    <span className="flex items-center rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 px-3 text-sm text-gray-600">+91</span>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                        setFormData((current) => ({ ...current, phone: value }));
-                        setError("");
-                      }}
-                      maxLength={10}
-                      className="w-full rounded-r-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none"
-                      placeholder="10 digit phone number"
-                      required
-                    />
-                  </div>
+                  Email address
+                  <input type="email" autoComplete="email" value={formData.email || ""} onChange={(e) => { setFormData((current) => ({ ...current, email: e.target.value })); setError(""); setResetEmailSent(false); }} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none" placeholder="you@example.com" required />
                 </label>
-                <label className="block text-sm font-medium text-gray-700">
-                  New password
-                  <input type="password" value={formData.password} onChange={(e) => setFormData((current) => ({ ...current, password: e.target.value }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none" minLength={6} required />
-                </label>
-                <label className="block text-sm font-medium text-gray-700">
-                  Confirm new password
-                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-green-500 focus:outline-none" minLength={6} required />
-                </label>
-                <button type="submit" className="w-full rounded-lg bg-green-600 py-2 text-white font-medium transition hover:bg-green-700">
-                  Update password
+                {resetEmailSent && <p role="status" className="text-sm text-green-700">If an account exists for that email, a password reset link has been sent.</p>}
+                <button type="submit" disabled={resetEmailSent} className="w-full rounded-lg bg-green-600 py-2 text-white font-medium transition hover:bg-green-700 disabled:opacity-60">
+                  Send reset link
                 </button>
                 <button type="button" onClick={() => switchAuthMode("login")} className="block mx-auto text-sm text-green-600 hover:text-green-700 font-medium">
                   Back to login

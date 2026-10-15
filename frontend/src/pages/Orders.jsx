@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 import React, { useEffect, useState } from 'react';
 import orderApi from '../../api/orderApi';
 import { useSelector } from 'react-redux';
@@ -140,7 +141,7 @@ const Orders = () => {
               <div className="md:col-span-2 space-y-3">
                 {order.items.map((it) => (
                   <div key={it.product} className="flex items-center gap-3 border-b pb-3">
-                    <img src={it.image || '/placeholder.png'} alt={it.name} className="w-16 h-16 object-cover rounded" />
+                    <img src={resolveImageUrl(it.image || '/placeholder.png')} alt={it.name} className="w-16 h-16 object-cover rounded" />
                     <div className="flex-1">
                       <div className="font-medium">{it.name}</div>
                       <div className="text-sm text-gray-500">Qty: {it.quantity}</div>

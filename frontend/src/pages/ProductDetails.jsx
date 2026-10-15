@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import productApi from "../../api/productApi";
@@ -113,7 +114,7 @@ const ProductDetails = () => {
             onClick={() => setIsModalOpen(true)}
           >
             <img
-              src={mainImage}
+              src={resolveImageUrl(mainImage)}
               alt={product.name}
               className="max-h-full object-contain transition duration-300 hover:scale-105"
             />
@@ -125,7 +126,7 @@ const ProductDetails = () => {
               (img, idx) => (
                 <img
                   key={idx}
-                  src={img || "/placeholder.png"}
+                  src={resolveImageUrl(img || "/placeholder.png")}
                   alt={`Thumbnail ${idx}`}
                   onClick={() => setMainImage(img)}
                   className={`w-20 h-20 object-cover rounded-lg cursor-pointer border-2 transition-all duration-200 ${
@@ -224,7 +225,7 @@ const ProductDetails = () => {
               >
                 <div className="w-full h-48 bg-gray-50 flex items-center justify-center overflow-hidden">
                   <img
-                    src={item.images?.[0] || "/placeholder.png"}
+                    src={resolveImageUrl(item.images?.[0] || "/placeholder.png")}
                     alt={item.name}
                     className="h-full object-contain group-hover:scale-105 transition-transform duration-300"
                   />
@@ -253,7 +254,7 @@ const ProductDetails = () => {
             <FaTimes />
           </button>
           <img
-            src={mainImage}
+            src={resolveImageUrl(mainImage)}
             alt="Full View"
             className="max-h-[90vh] max-w-full object-contain rounded-lg shadow-lg"
           />

@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../../utils/imageUrl.js";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Plus,
@@ -648,10 +649,10 @@ const Products = () => {
                     <td className="px-4 py-3 min-w-64">
                       <div className="flex gap-2 flex-wrap mb-2">
                         {row.images.map((url, index) => <div key={index}>
-                          <img src={url} alt={row.title} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />
+                          <img src={resolveImageUrl(url)} alt={row.title} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />
                           <button type="button" disabled={importing} onClick={() => updateImportRow(row.rowNumber, { images: row.images.filter((_, i) => i !== index) })}>Remove</button>
                         </div>)}
-                        {row.imageFiles.map(image => <img key={image.url} src={image.url} alt={image.file.name} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />)}
+                        {row.imageFiles.map(image => <img key={image.url} src={resolveImageUrl(image.url)} alt={image.file.name} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />)}
                       </div>
                       <input aria-label={'Images for ' + row.title} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={importing} onChange={event => { selectImportImages(row, event.target.files); event.target.value = ""; }} className="max-w-64 text-xs" />
                       {row.imageFiles.length > 0 && <button type="button" disabled={importing} className="block text-xs mt-2 text-red-600" onClick={() => selectImportImages(row, [])}>Clear selected images</button>}
@@ -727,11 +728,9 @@ const Products = () => {
                 <tr key={product._id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <img
-                      src={
-                        Array.isArray(product.images) && product.images.length > 0
+                      src={resolveImageUrl(Array.isArray(product.images) && product.images.length > 0
                           ? product.images[0]
-                          : "/placeholder.png"
-                      }
+                          : "/placeholder.png")}
                       alt={product.title}
                       loading="lazy"
                       decoding="async"
@@ -1019,7 +1018,7 @@ const Products = () => {
                       className="relative w-24 h-24 rounded-md overflow-hidden border shadow-sm group"
                     >
                       <img
-                        src={img.preview}
+                        src={resolveImageUrl(img.preview)}
                         alt=""
                         loading="lazy"
                         decoding="async"

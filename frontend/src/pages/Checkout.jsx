@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-toastify";
@@ -399,7 +400,7 @@ const Checkout = () => {
               {cartItems.map((item) => (
                 <div key={item.id} className="flex items-center gap-4">
                   <img
-                    src={item.image}
+                    src={resolveImageUrl(item.image)}
                     alt={item.title}
                     className="w-16 h-16 object-cover rounded"
                   />

@@ -1,28 +1,30 @@
 const crypto = require('crypto');
 
-// Forgot Password - Request Reset (phone only)
+// Send a short-lived, single-use reset link to the user's registered email.
 exports.forgotPassword = async (req, res) => {
   try {
-    const { phone } = req.body;
-    if (!phone) {
-      return res.status(400).json({ message: 'Phone number is required' });
+    const email = String(req.body.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address' });
     }
+    const user = await User.findOne({ email });
+    const message = 'If an account exists for that email, a password reset link has been sent.';
+    if (!user) return res.json({ message });
 
-    // Find user by phone
-    const user = await User.findOne({ phone });
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetPasswordExpire = Date.now() + 1000 * 60 * 15; // 15 minutes
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpire = resetPasswordExpire;
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
     await user.save();
-
-    // For demo, just return token in response (REMOVE in production)
-    return res.json({ message: 'Reset token sent via SMS', resetToken });
+    try {
+      const { sendPasswordResetEmail } = require('../utils/passwordResetEmail');
+      await sendPasswordResetEmail(user.email, resetToken);
+    } catch (error) {
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save();
+      throw error;
+    }
+    return res.json({ message });
   } catch (err) {
     console.error('Forgot Password Error:', err.message || err);
     res.status(500).json({ message: 'Server error' });
@@ -33,13 +35,13 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { token, newPassword } = req.body;
-    if (!token || !newPassword) {
+    if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token) || typeof newPassword !== 'string' || newPassword.length < 6) {
       return res.status(400).json({ message: 'Token and new password required' });
     }
 
     // Find user by token and check expiry
     const user = await User.findOne({
-      resetPasswordToken: token,
+      resetPasswordToken: crypto.createHash('sha256').update(token).digest('hex'),
       resetPasswordExpire: { $gt: Date.now() },
     });
     if (!user) {
@@ -297,8 +299,9 @@ exports.getAllUsers = async (req, res) => {
 exports.registerWithPassword = async (req, res) => {
   try {
     const { name, phone, password } = req.body;
+    const email = String(req.body.email || '').trim().toLowerCase();
 
-    if (!phone || !password) {
+    if (!phone || !password || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -307,11 +310,15 @@ exports.registerWithPassword = async (req, res) => {
     if (existingUser) {
       return res.status(409).json({ message: "Phone Number already registered" });
     }
+    if (await User.findOne({ email })) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       firstName:name,
+      email,
       phone: normalizedPhone,
       password: hashedPassword,
     });

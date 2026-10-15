@@ -33,6 +33,7 @@ import LayoutDashboard from "./pages/admin/LayoutDashboard";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CookiePolicy from "./pages/CookiePolicy";
+import ResetPassword from "./pages/ResetPassword";
 
 // Lazy-loaded pages
 const Checkout = React.lazy(() => import("./pages/Checkout"));
@@ -59,6 +60,8 @@ const AppContent = () => {
           path="/"
           element={<Home />}
         />
+
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
           path="/product"

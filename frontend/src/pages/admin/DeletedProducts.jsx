@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../../utils/imageUrl.js";
 import React, { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { toast } from "react-toastify";
@@ -64,11 +65,9 @@ const DeletedProducts = () => {
                 <tr key={p._id} className="border-b hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <img
-                      src={
-                        Array.isArray(p.images) && p.images.length > 0
+                      src={resolveImageUrl(Array.isArray(p.images) && p.images.length > 0
                           ? p.images[0]
-                          : "/placeholder.png"
-                      }
+                          : "/placeholder.png")}
                       loading="lazy"
                       decoding="async"
                       width={56}

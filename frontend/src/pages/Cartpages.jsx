@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 
@@ -26,7 +27,7 @@ const Cartpages = () => {
             <div className="bg-white shadow rounded-lg">
               {items.map((it) => (
                 <div key={it.id} className="p-4 border-b last:border-b-0 flex items-center gap-4">
-                  <img src={it.image} alt={it.title} className="w-20 h-20 object-cover rounded" />
+                  <img src={resolveImageUrl(it.image)} alt={it.title} className="w-20 h-20 object-cover rounded" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">{it.title}</h3>
                     <p className="text-red-600 font-semibold">₹{(it.price || 0).toLocaleString()}</p>

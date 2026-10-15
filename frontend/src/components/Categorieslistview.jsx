@@ -1,3 +1,4 @@
+import { resolveImageUrl } from "../utils/imageUrl.js";
 import React from "react";
 import { Link } from "react-router-dom";
 import usePagedCatalog from "../hooks/usePagedCatalog";
@@ -47,8 +48,8 @@ const CategoryListView = () => {
                     <div className="w-full h-32 sm:h-36 bg-gray-100 overflow-hidden flex items-center justify-center">
 
                       <LazyLoadImage
-                        src={(product.images && product.images[0]) ||
-                          "/placeholder.jpg"}
+                        src={resolveImageUrl((product.images && product.images[0]) ||
+                          "/placeholder.jpg")}
                         alt={product.title}
                         effect="blur"
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
