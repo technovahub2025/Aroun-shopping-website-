@@ -33,6 +33,7 @@ mongoose.connect(process.env.MONGO_URL)
   .catch(err => console.log(err));
 
 // Routes
+app.use('/reset-password', require('./routes/passwordResetPage'));
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/drive-images', require('./routes/driveImageRoute'));
