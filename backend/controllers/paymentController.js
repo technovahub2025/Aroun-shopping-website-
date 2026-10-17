@@ -84,7 +84,10 @@ exports.verifyRazorpayPayment = async (req, res) => {
 
 exports.razorpayWebhook = async (req, res) => {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-  if (!secret) return res.sendStatus(503);
+  if (!secret || /^https?:\/\//i.test(secret.trim())) {
+    console.error('Razorpay webhook configuration invalid', { code: 'INVALID_WEBHOOK_SECRET' });
+    return res.sendStatus(503);
+  }
   const signature = req.headers['x-razorpay-signature'];
   if (!Buffer.isBuffer(req.body) || typeof signature !== 'string' || !/^[a-f\d]{64}$/i.test(signature)) return res.sendStatus(400);
   const expected = crypto.createHmac('sha256', secret).update(req.body).digest();

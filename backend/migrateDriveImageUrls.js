@@ -1,237 +1,56 @@
-require('dotenv').config();
-
+// Dry run by default. Review counts and take a database backup before --apply.
+require('dotenv').config({ quiet: true });
 const mongoose = require('mongoose');
-const crypto = require('node:crypto');
 const Product = require('./models/productModel');
-
-const OLD_HOST = 'https://aroun-shopping-website-ysi0.onrender.com';
-const NEW_HOST = 'https://aroun-shopping-website-5nnj.onrender.com';
-const DRY_RUN = process.env.DRY_RUN !== 'false';
-
-function generateSignature(id) {
-  if (!process.env.DRIVE_IMAGE_SIGNING_SECRET) {
-    throw new Error(
-      'DRIVE_IMAGE_SIGNING_SECRET is missing from environment variables.'
-    );
-  }
-
-  return crypto
-    .createHmac(
-      'sha256',
-      process.env.DRIVE_IMAGE_SIGNING_SECRET
-    )
-    .update(id)
-    .digest('hex');
-}
+const { canonicalImageUrl, publicApiOrigin } = require('./utils/driveImageUrls');
+const drive = require('./utils/googleDrive');
 
 function migrateImageUrl(url) {
-  if (typeof url !== 'string') {
-    return {
-      changed: false,
-      url,
-    };
-  }
-
-  if (!url.startsWith(`${OLD_HOST}/api/drive-images/`)) {
-    return {
-      changed: false,
-      url,
-    };
-  }
-
-  const match = url.match(
-    /\/api\/drive-images\/([a-zA-Z0-9_-]+)/
-  );
-
-  if (!match) {
-    return {
-      changed: false,
-      url,
-    };
-  }
-
-  const driveFileId = match[1];
-
-  const signature = generateSignature(driveFileId);
-
-  const newUrl =
-    `${NEW_HOST}/api/drive-images/${driveFileId}?signature=${signature}`;
-
-  return {
-    changed: true,
-    oldUrl: url,
-    url: newUrl,
-    driveFileId,
-  };
+  const next = canonicalImageUrl(url);
+  return { changed: next !== url, url: next };
 }
 
 async function run() {
+  const apply = process.argv.includes('--apply');
+  const summary = { mode: apply ? 'apply' : 'dry-run', target: publicApiOrigin(),
+    productsScanned: 0, productsChanged: 0, imagesChanged: 0, invalidSignatures: 0,
+    conflicts: 0, sourceOrigins: {} };
+  if (!process.env.MONGO_URL || !process.env.DRIVE_IMAGE_SIGNING_SECRET) {
+    throw new Error('MONGO_URL and DRIVE_IMAGE_SIGNING_SECRET are required.');
+  }
   try {
-    console.log('');
-    console.log('==============================================');
-    console.log(' AROUN STORES DRIVE IMAGE URL MIGRATION');
-    console.log('==============================================');
-    console.log('');
-
-    console.log(`Mode: ${DRY_RUN ? 'DRY RUN - NO DATABASE CHANGES' : 'LIVE - DATABASE WILL BE UPDATED'}`);
-    console.log(`Old backend: ${OLD_HOST}`);
-    console.log(`New backend: ${NEW_HOST}`);
-    console.log('');
-
-    if (!process.env.MONGO_URL) {
-      throw new Error('MONGO_URL is missing.');
-    }
-
-    if (!process.env.DRIVE_IMAGE_SIGNING_SECRET) {
-      throw new Error('DRIVE_IMAGE_SIGNING_SECRET is missing.');
-    }
-
-    await mongoose.connect(process.env.MONGO_URL);
-
-    console.log('MongoDB connected.');
-    console.log('');
-
-    const products = await Product.find({});
-
-    console.log(`Products scanned: ${products.length}`);
-    console.log('');
-
-    let productsChanged = 0;
-    let imagesChanged = 0;
-
-    const updates = [];
-
-    for (const product of products) {
-      if (!Array.isArray(product.images) || !product.images.length) {
-        continue;
-      }
-
-      let productChanged = false;
-
-      const newImages = product.images.map((imageUrl) => {
-        const result = migrateImageUrl(imageUrl);
-
-        if (!result.changed) {
-          return imageUrl;
+    await mongoose.connect(process.env.MONGO_URL, { serverSelectionTimeoutMS: 10000 });
+    for await (const product of Product.find({}).select('_id images').lean().cursor()) {
+      summary.productsScanned++;
+      const original = product.images || [];
+      const images = original.map(url => {
+        const result = migrateImageUrl(url);
+        let parsed;
+        try { parsed = new URL(url); } catch { /* relative or external reference */ }
+        if (parsed && /^\/api\/drive-images\/[A-Za-z0-9_-]+$/.test(parsed.pathname)) {
+          summary.sourceOrigins[parsed.origin] = (summary.sourceOrigins[parsed.origin] || 0) + 1;
+          if (!drive.validSignature(parsed.pathname.split('/').at(-1), parsed.searchParams.get('signature'))) summary.invalidSignatures++;
         }
-
-        productChanged = true;
-        imagesChanged++;
-
+        if (result.changed) summary.imagesChanged++;
         return result.url;
       });
-
-      if (productChanged) {
-        productsChanged++;
-
-        updates.push({
-          productId: product._id.toString(),
-          title: product.title,
-          oldImages: product.images,
-          newImages,
-        });
+      if (!images.some((url, index) => url !== original[index])) continue;
+      summary.productsChanged++;
+      if (apply) {
+        // Skip concurrent edits instead of overwriting them.
+        const result = await Product.updateOne({ _id: product._id, images: original }, { $set: { images } });
+        if (!result.matchedCount) summary.conflicts++;
       }
     }
-
-    console.log('----------------------------------------------');
-    console.log(`Products containing old URLs: ${productsChanged}`);
-    console.log(`Image URLs to migrate: ${imagesChanged}`);
-    console.log('----------------------------------------------');
-    console.log('');
-
-    if (!updates.length) {
-      console.log('No old A2HE image URLs were found.');
-      return;
-    }
-
-    console.log('Sample migrations:');
-    console.log('');
-
-    updates.slice(0, 5).forEach((item, index) => {
-      console.log(`Product ${index + 1}: ${item.title}`);
-      console.log(`ID: ${item.productId}`);
-
-      item.oldImages.forEach((oldImage, imageIndex) => {
-        const newImage = item.newImages[imageIndex];
-
-        if (oldImage !== newImage) {
-          console.log('');
-          console.log('OLD:');
-          console.log(oldImage);
-          console.log('');
-          console.log('NEW:');
-          console.log(newImage);
-        }
-      });
-
-      console.log('');
-      console.log('----------------------------------------------');
-    });
-
-    if (DRY_RUN) {
-      console.log('');
-      console.log('DRY RUN COMPLETE.');
-      console.log('No database records were changed.');
-      console.log('');
-      console.log('If the numbers and URLs look correct, run:');
-      console.log('');
-      console.log('$env:DRY_RUN="false"');
-      console.log('node migrateDriveImageUrls.js');
-      console.log('');
-      return;
-    }
-
-    console.log('');
-    console.log('Starting LIVE database migration...');
-    console.log('');
-
-    let updatedProducts = 0;
-
-    for (const item of updates) {
-      await Product.updateOne(
-        { _id: item.productId },
-        {
-          $set: {
-            images: item.newImages,
-          },
-        }
-      );
-
-      updatedProducts++;
-
-      if (
-        updatedProducts % 100 === 0 ||
-        updatedProducts === updates.length
-      ) {
-        console.log(
-          `Updated ${updatedProducts}/${updates.length} products`
-        );
-      }
-    }
-
-    console.log('');
-    console.log('==============================================');
-    console.log(' MIGRATION COMPLETE');
-    console.log('==============================================');
-    console.log('');
-    console.log(`Products updated: ${updatedProducts}`);
-    console.log(`Image URLs migrated: ${imagesChanged}`);
-    console.log('');
-    console.log('Google Drive files were NOT uploaded or deleted.');
-    console.log('');
-
-  } catch (error) {
-    console.error('');
-    console.error('==============================================');
-    console.error(' MIGRATION FAILED');
-    console.error('==============================================');
-    console.error('');
-    console.error(error);
-    console.error('');
-    process.exitCode = 1;
-  } finally {
-    await mongoose.disconnect();
-  }
+    console.log(JSON.stringify(summary, null, 2));
+    if (!apply) console.log('No data changed. Review this report and a database backup before running with --apply.');
+    if (summary.invalidSignatures) console.log('Invalid signatures require investigation of the original signing key; changing hosts does not repair them.');
+  } finally { await mongoose.disconnect(); }
 }
 
-run();
+if (require.main === module) run().catch(() => {
+  // Raw database errors can include connection credentials.
+  console.error('Migration failed. Verify PUBLIC_API_URL, signing key and database access.');
+  process.exitCode = 1;
+});
+module.exports = { migrateImageUrl, run };

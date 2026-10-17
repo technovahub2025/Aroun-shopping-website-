@@ -1,5 +1,6 @@
 const { createHmac, randomUUID, timingSafeEqual } = require('node:crypto');
 const credentials = require('./driveCredentials');
+const { publicApiOrigin } = require('./driveImageUrls');
 
 const imageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const fail = (message, status = 502) => Object.assign(new Error(message), { status, expose: true });
@@ -7,25 +8,62 @@ let token;
 let expiresAt = 0;
 let tokenCredentials;
 
+
+// Only controlled enums/status numbers reach logs, never upstream messages or URLs.
+const upstreamReasons = new Set(['invalid_grant', 'invalid_client', 'unauthorized_client',
+  'access_denied', 'authError', 'insufficientPermissions', 'appNotAuthorizedToFile',
+  'notFound', 'rateLimitExceeded', 'userRateLimitExceeded', 'dailyLimitExceeded',
+  'downloadQuotaExceeded', 'storageQuotaExceeded', 'backendError', 'fileNotDownloadable']);
+function upstreamError(stage, status, data) {
+  const raw = typeof data?.error === 'string' ? data.error : data?.error?.errors?.[0]?.reason;
+  const reason = upstreamReasons.has(raw) ? raw : 'unclassified';
+  const code = stage === 'oauth' && ['invalid_grant', 'invalid_client'].includes(reason)
+    ? reason : stage === 'oauth' ? 'DRIVE_OAUTH_FAILED' : 'DRIVE_UPSTREAM_FAILED';
+  return Object.assign(fail(stage === 'oauth' ? 'Google Drive authorization failed. Check the server credentials.'
+    : 'Google Drive request failed. Check account access, storage, and folder settings.',
+  stage === 'oauth' || status === 429 || status >= 500 ? 503 : status === 404 ? 404 : 502),
+  { code, stage, upstreamStatus: status, upstreamReason: reason });
+}
+async function safeFetch(stage, url, options) {
+  try { return await fetch(url, options); } catch (error) {
+    throw Object.assign(fail('Google Drive connection failed.', 503), {
+      code: ['TimeoutError', 'AbortError'].includes(error.name) ? 'DRIVE_TIMEOUT' : 'DRIVE_NETWORK_FAILED', stage,
+    });
+  }
+}
+const logCodes = new Set(['STORAGE_NOT_CONFIGURED', 'DRIVE_CREDENTIAL_STORE_UNAVAILABLE',
+  'IMAGE_SIGNING_NOT_CONFIGURED', 'INVALID_PUBLIC_API_URL', 'DRIVE_OAUTH_RESPONSE_INVALID',
+  'invalid_grant', 'invalid_client', 'DRIVE_OAUTH_FAILED', 'DRIVE_UPSTREAM_FAILED',
+  'DRIVE_TIMEOUT', 'DRIVE_NETWORK_FAILED']);
+function logImageError(error, requestId) {
+  console.error('drive_image_error', {
+    requestId, code: logCodes.has(error.code) ? error.code : 'IMAGE_PROXY_FAILED',
+    stage: ['oauth', 'drive'].includes(error.stage) ? error.stage : 'local',
+    upstreamStatus: Number.isInteger(error.upstreamStatus) ? error.upstreamStatus : undefined,
+    upstreamReason: upstreamReasons.has(error.upstreamReason) ? error.upstreamReason : undefined,
+  });
+}
+
 function config() {
   const names = ['GOOGLE_DRIVE_CLIENT_ID', 'GOOGLE_DRIVE_CLIENT_SECRET', 'DRIVE_IMAGE_SIGNING_SECRET', 'PUBLIC_API_URL'];
   if (names.some((name) => !process.env[name])) {
-    throw fail('Google Drive uploads are not configured. See backend/GOOGLE_DRIVE_SETUP.md.', 503);
+    throw Object.assign(fail('Google Drive uploads are not configured. See backend/GOOGLE_DRIVE_SETUP.md.', 503), { code: 'STORAGE_NOT_CONFIGURED' });
   }
-  const base = new URL(process.env.PUBLIC_API_URL);
-  if (!['http:', 'https:'].includes(base.protocol)) throw fail('Invalid PUBLIC_API_URL.', 503);
-  return base.origin;
+  return publicApiOrigin();
 }
 
 async function accessToken() {
   if (['GOOGLE_DRIVE_CLIENT_ID', 'GOOGLE_DRIVE_CLIENT_SECRET'].some(name => !process.env[name])) {
     throw Object.assign(new Error('Storage is not configured.'), { code: 'STORAGE_NOT_CONFIGURED', status: 503, expose: true });
   }
-  const refreshToken = await credentials.getRefreshToken();
+  let refreshToken;
+  try { refreshToken = await credentials.getRefreshToken(); } catch {
+    throw Object.assign(fail('Drive credential storage unavailable.', 503), { code: 'DRIVE_CREDENTIAL_STORE_UNAVAILABLE' });
+  }
   if (!refreshToken) throw Object.assign(fail('Google Drive is not connected.', 503), { code: 'STORAGE_NOT_CONFIGURED' });
   const credentialKey = JSON.stringify([process.env.GOOGLE_DRIVE_CLIENT_ID, process.env.GOOGLE_DRIVE_CLIENT_SECRET, refreshToken]);
   if (token && tokenCredentials === credentialKey && Date.now() < expiresAt) return token;
-  const response = await fetch('https://oauth2.googleapis.com/token', {
+  const response = await safeFetch('oauth', 'https://oauth2.googleapis.com/token', {
     method: 'POST',
     body: new URLSearchParams({
       client_id: process.env.GOOGLE_DRIVE_CLIENT_ID,
@@ -35,9 +73,11 @@ async function accessToken() {
     }),
     signal: AbortSignal.timeout(8000),
   });
-  const data = await response.json();
-  if (!response.ok) throw Object.assign(fail('Google Drive authorization failed. Check the server credentials.', 503), { code: data.error });
-  if (typeof data.access_token !== 'string' || !Number.isFinite(data.expires_in)) throw fail('Google Drive authorization failed.', 503);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw upstreamError('oauth', response.status, data);
+  if (typeof data.access_token !== 'string' || !Number.isFinite(data.expires_in)) {
+    throw Object.assign(fail('Google Drive authorization failed.', 503), { code: 'DRIVE_OAUTH_RESPONSE_INVALID', stage: 'oauth' });
+  }
   token = data.access_token;
   tokenCredentials = credentialKey;
   expiresAt = Date.now() + (data.expires_in - 60) * 1000;
@@ -45,44 +85,34 @@ async function accessToken() {
 }
 
 async function driveFetch(url, options = {}, retry = true) {
-  const response = await fetch(url, {
+  const access = await accessToken();
+  const response = await safeFetch('drive', url, {
     ...options,
     headers: {
       ...options.headers,
-      Authorization: `Bearer ${await accessToken()}`
+      Authorization: `Bearer ${access}`
     },
     signal: AbortSignal.timeout(60000),
   });
 
   if (!response.ok) {
     if (response.status === 401 && retry) {
+      await response.body?.cancel();
       invalidateAccessToken();
       return driveFetch(url, options, false);
     }
-    const errorBody = await response.text();
-
-    console.error('========================================');
-    console.error('GOOGLE DRIVE API ERROR');
-    console.error('Status:', response.status);
-    console.error('Response:', errorBody);
-    console.error('URL:', url);
-    console.error('========================================');
-
-    if (response.status === 401) {
-      token = undefined;
-      expiresAt = 0;
-    }
-
-    throw fail(
-      'Google Drive request failed. Check account access, storage, and folder settings.'
-    );
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) invalidateAccessToken();
+    throw upstreamError('drive', response.status, data);
   }
 
   return response;
 }
 
 function signature(id) {
-  config();
+  if (!process.env.DRIVE_IMAGE_SIGNING_SECRET) {
+    throw Object.assign(fail('Image signing is not configured.', 503), { code: 'IMAGE_SIGNING_NOT_CONFIGURED' });
+  }
   return createHmac('sha256', process.env.DRIVE_IMAGE_SIGNING_SECRET).update(id).digest('hex');
 }
 
@@ -114,7 +144,12 @@ async function uploadImage(file) {
     method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body,
   });
   const { id } = await response.json();
-  return { id, url: `${base}/api/drive-images/${id}?signature=${signature(id)}` };
+  return { id, url: imageUrl(id, base) };
+}
+
+function imageUrl(id, base = publicApiOrigin()) {
+  if (typeof id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(id)) throw fail('Invalid image ID.', 400);
+  return `${base}/api/drive-images/${id}?signature=${signature(id)}`;
 }
 
 async function deleteImage(id) {
@@ -127,4 +162,4 @@ async function readImage(id) {
 }
 
 const invalidateAccessToken = () => { token = undefined; expiresAt = 0; };
-module.exports = { uploadImage, deleteImage, readImage, validSignature, validateImage, imageTypes, accessToken, invalidateAccessToken };
+module.exports = { imageUrl, logImageError, uploadImage, deleteImage, readImage, validSignature, validateImage, imageTypes, accessToken, invalidateAccessToken };

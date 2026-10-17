@@ -1,5 +1,12 @@
 const express = require("express");
 const router = express.Router();
+const { canonicalProductPayload } = require('../utils/driveImageUrls');
+// Covers documents, lean catalog/admin rows, and cached category previews alike.
+router.use((req, res, next) => {
+  const send = res.json;
+  res.json = function (body) { return send.call(this, canonicalProductPayload(body)); };
+  next();
+});
 const upload = require("../utils/multer");
 const { 
   createProduct, getProducts, getProduct, updateProduct, deleteProduct, getCategoryCounts,

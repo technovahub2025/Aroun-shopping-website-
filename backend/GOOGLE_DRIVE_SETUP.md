@@ -1,5 +1,7 @@
 # Google Drive product images
 
+For hostname migrations and HTTP 503 investigation, follow [the image recovery runbook](IMAGE_503_RUNBOOK.md).
+
 Connections made through the admin Reconnect button are now saved in MongoDB, keyed by the OAuth client ID. Deploy this update and reconnect once to save the account; subsequent server restarts and deployments reuse the saved refresh token. Keep the same MongoDB database and OAuth client configuration across deployments. Database write failures fail the connection flow instead of reporting a connection that will be lost on restart. Tokens are backend-only secrets; restrict access to the database and its backups.
 
 The saved token takes precedence over `GOOGLE_DRIVE_REFRESH_TOKEN`; the environment setting remains a fallback when no database connection record exists. Access tokens refresh automatically, and a Drive request rejected with HTTP 401 is retried once with a fresh token. Folder access and temporary status-check failures are displayed separately from account disconnection.
@@ -12,7 +14,7 @@ Requires Node.js 22 or newer. No additional npm dependencies are needed.
 2. Create an OAuth client of type **Web application**. For the one-time setup below, add `https://developers.google.com/oauthplayground` as an authorized redirect URI.
 3. Open [OAuth Playground](https://developers.google.com/oauthplayground/). In settings, enable **Use your own OAuth credentials** and enter your client ID and secret. Use offline access. Authorize `https://www.googleapis.com/auth/drive.file` as the account that should store product images, then exchange the authorization code for tokens. Copy the refresh token into the backend environment. Do not send credentials or tokens to the frontend or commit them.
 4. Copy the variables from `.env.drive.example` into `backend/.env` (keep existing database/auth settings). Set the client ID, client secret, refresh token, and a long random `DRIVE_IMAGE_SIGNING_SECRET`. Generate a secret with `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
-5. Set `PUBLIC_API_URL` to the backend origin, e.g. `http://localhost:5000` locally or `https://api.your-shop.com` in production. It must be reachable by shoppers. Keep this origin and the signing secret stable: saved image URLs depend on both.
+5. Set `PUBLIC_API_URL` to the backend origin, e.g. `http://localhost:5000` locally or `https://api.your-shop.com` in production, without a path. It must be reachable by shoppers. Keep the signing secret stable: saved signatures depend on it. Known legacy backend image origins are normalized in product responses without changing the signature.
 6. Leave `GOOGLE_DRIVE_FOLDER_ID` empty to upload into My Drive. An optional folder must be accessible to this OAuth client: `drive.file` does not grant access to arbitrary existing folders. Use a folder created by the same OAuth app or explicitly selected through Google Picker; otherwise leave this setting empty.
 7. Restart the backend. Send authenticated admin multipart requests to the product endpoints below with `imageStorage=google-drive`. Frontend upload controls are a separate change. Cloudinary remains available with its existing configuration.
 

@@ -87,3 +87,12 @@ test('webhook rejects altered raw payload and processes authentic captured payme
   assert.equal(valid.code, 200);
   assert.equal(enqueue.mock.callCount(), 1);
 });
+
+test('webhook rejects an endpoint URL configured as its signing secret', async () => {
+  process.env.RAZORPAY_WEBHOOK_SECRET = 'https://api.example/api/payment/webhook';
+  const logs = mock.method(console, 'error', () => {});
+  const res = response();
+  await controller.razorpayWebhook({ headers: {}, body: Buffer.from('{}') }, res);
+  assert.equal(res.code, 503);
+  assert.doesNotMatch(JSON.stringify(logs.mock.calls), /https:/);
+});
