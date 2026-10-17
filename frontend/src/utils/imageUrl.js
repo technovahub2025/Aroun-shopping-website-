@@ -1,7 +1,5 @@
 const LEGACY_API_ORIGINS = new Set([
-  'https://arounstorebackend-fdpa.onrender.com',
-  'https://aroun-shopping-website-fekt.onrender.com',
-  'https://aroun-shopping-website-ysi0.onrender.com',
+'https://aroun-shopping-website-5nnj.onrender.com'
 ]);
 
 // Resolve at render time so persisted products, carts and orders also migrate.
