@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
 const crypto = require('node:crypto');
 const Product = require('./models/productModel');
 
-const OLD_HOST = 'https://aroun-shopping-website-fekt.onrender.com';
-const NEW_HOST = 'https://aroun-shopping-website-ysi0.onrender.com';
+const OLD_HOST = 'https://aroun-shopping-website-ysi0.onrender.com';
+const NEW_HOST = 'https://aroun-shopping-website-5nnj.onrender.com';
 const DRY_RUN = process.env.DRY_RUN !== 'false';
 
 function generateSignature(id) {

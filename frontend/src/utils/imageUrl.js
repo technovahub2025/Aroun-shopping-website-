@@ -1,4 +1,8 @@
-const LEGACY_API_ORIGIN = 'https://arounstorebackend-fdpa.onrender.com';
+const LEGACY_API_ORIGINS = new Set([
+  'https://arounstorebackend-fdpa.onrender.com',
+  'https://aroun-shopping-website-fekt.onrender.com',
+  'https://aroun-shopping-website-ysi0.onrender.com',
+]);
 
 // Resolve at render time so persisted products, carts and orders also migrate.
 export function resolveImageUrl(value, apiBaseUrl = import.meta.env?.VITE_API_BASE_URL) {
@@ -8,7 +12,7 @@ export function resolveImageUrl(value, apiBaseUrl = import.meta.env?.VITE_API_BA
     const image = new URL(value);
     const api = new URL(apiBaseUrl);
     if (
-      image.origin === LEGACY_API_ORIGIN &&
+      LEGACY_API_ORIGINS.has(image.origin) &&
       image.pathname.startsWith('/api/drive-images/') &&
       ['http:', 'https:'].includes(api.protocol)
     ) {

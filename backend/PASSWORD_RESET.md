@@ -8,7 +8,7 @@ service environment):
 ```env
 RESEND_API_KEY=re_your_api_key
 RESEND_FROM=Aroun Store <no-reply@your-verified-domain.com>
-FRONTEND_URL=https://aroun-shopping-website-ysi0.onrender.com
+FRONTEND_URL=https://aroun-shopping-website-5nnj.onrender.com
 ```
 
 Set `RESEND_FROM` to an address on the verified sending domain. Set `FRONTEND_URL`

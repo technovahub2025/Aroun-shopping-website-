@@ -17,7 +17,7 @@ an order also queues an order-confirmed alert. No alert is sent by the dummy gat
 3. Set `PUSH_ENABLED=true` and `RAZORPAY_WEBHOOK_SECRET` to a new secret used only
    for this webhook. Keep the existing Razorpay API credentials and MongoDB URL.
 4. Configure Razorpay's `payment.captured` webhook to
-   `https://aroun-shopping-website-ysi0.onrender.com/api/payment/webhook`, using
+   `https://aroun-shopping-website-5nnj.onrender.com/api/payment/webhook`, using
    that same webhook secret. Configure the matching test/live account and capture
    settings; authorized but uncaptured payments do not generate success alerts.
 5. Ensure MongoDB creates the unique indexes on PushDevice.token, PushEvent.key,
