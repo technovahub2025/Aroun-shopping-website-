@@ -344,14 +344,13 @@ exports.registerWithPassword = async (req, res) => {
 /* ================= PASSWORD LOGIN ================= */
 exports.loginWithPassword = async (req, res) => {
   try {
-    const { phone, email, password } = req.body;
-    const login = String(email || phone || '').trim();
+    const { phone, password } = req.body;
 
-    if (!login || !password) {
-      return res.status(400).json({ message: "Email or phone and password required" });
+    if (!phone || !password) {
+      return res.status(400).json({ message: "Phone & password required" });
     }
 
-    if (!email && isStaticAdminPhone(login) && password === STATIC_ADMIN_PASSWORD) {
+    if (isStaticAdminPhone(phone) && password === STATIC_ADMIN_PASSWORD) {
       const adminUser = { _id: STATIC_ADMIN_ID, phone: STATIC_ADMIN_PHONE, role: 'admin', firstName: 'Admin' };
       const token = generateToken(adminUser);
       setAuthCookie(res, token);
@@ -362,9 +361,7 @@ exports.loginWithPassword = async (req, res) => {
       });
     }
 
-    const user = email
-      ? await User.findOne({ email: login.toLowerCase() })
-      : await findUserByPhone(login);
+    const user = await findUserByPhone(phone);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }

@@ -131,12 +131,12 @@ def main():
     site_session = None
     products_by_title = {}
     if args.upload:
-        email = input("Admin email: ").strip()
+        phone = input("Admin phone: ").strip()
         password = getpass.getpass("Admin password: ")
         site_session = requests.Session()
         login = site_session.post(
             f"{api_base_url}/api/auth/login",
-            json={"email": email, "password": password},
+            json={"phone": phone, "password": password},
             timeout=20,
         )
         login.raise_for_status()
