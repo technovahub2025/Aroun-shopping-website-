@@ -75,6 +75,7 @@ const Products = () => {
   const [importing, setImporting] = useState(false);
   const [parsingExcel, setParsingExcel] = useState(false);
   const [isSalesReport, setIsSalesReport] = useState(false);
+  const [importMode, setImportMode] = useState("create");
   const [quantityConfirmed, setQuantityConfirmed] = useState(false);
   const importPreviewUrls = useRef(new Set());
   useEffect(() => {
@@ -94,6 +95,7 @@ const Products = () => {
     discount: "",
     images: [],
   });
+  const [imageUrlInput, setImageUrlInput] = useState("");
 
   const titleRef = useRef(null);
   const categoryRef = useRef(null);
@@ -249,6 +251,7 @@ const Products = () => {
         images: [],
       });
     }
+    setImageUrlInput("");
 
     setShowModal(true);
   };
@@ -375,7 +378,7 @@ const Products = () => {
   };
   const handleImportSubmit = async () => {
     if (importing || (isSalesReport && !quantityConfirmed)) return;
-    const validRows = importRows.filter((row) => row.isValid);
+    const validRows = importRows.filter((row) => row.isValid && (importMode !== "edit" || row.productId));
     if (!validRows.length) {
       toast.error("No valid rows to import");
       return;
@@ -404,7 +407,11 @@ const Products = () => {
         }
 
         try {
-          const response = await productApi.create(data, {
+          const response = importMode === "edit"
+            ? await productApi.update(row.productId, data, {
+              headers: { "Content-Type": "multipart/form-data" },
+            })
+            : await productApi.create(data, {
             headers: { "Content-Type": "multipart/form-data" },
           });
           createdProducts.push(response.data);
@@ -440,6 +447,30 @@ const Products = () => {
     if (importInputRef.current) {
       importInputRef.current.value = "";
     }
+  };
+
+  const downloadBulkEditSheet = async () => {
+    if (!products.length) {
+      toast.info("Load products first, then download the current page as an edit sheet.");
+      return;
+    }
+    const XLSX = await import("xlsx");
+    const worksheet = XLSX.utils.json_to_sheet(products.map(product => ({
+      productId: product._id,
+      title: product.title || "",
+      description: product.description || "",
+      category: product.category || "",
+      type: product.type || "",
+      price: product.price ?? "",
+      mrp: product.mrp ?? "",
+      stock: product.stock ?? "",
+      rating: product.rating ?? 0,
+      discount: product.discount ?? 0,
+      imageUrls: (product.images || []).join(", "),
+    })));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Bulk Edit");
+    XLSX.writeFile(workbook, "product-bulk-edit.xlsx");
   };
 
   const currentItems = products;
@@ -478,7 +509,7 @@ const Products = () => {
                 Excel Upload
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Upload your stock sheet. Product details fill automatically; edit only images and descriptions in the preview.
+                Import new products or bulk edit existing products from an Excel sheet. Bulk edit rows must include Product ID.
               </p>
             </div>
             <button
@@ -508,12 +539,22 @@ const Products = () => {
           />
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
+            <label className="text-sm flex items-center gap-2 border rounded-lg px-3 py-2">
+              Import mode
+              <select value={importMode} disabled={importing || importRows.length > 0} onChange={event => setImportMode(event.target.value)} className="bg-transparent font-medium">
+                <option value="create">Add new products</option>
+                <option value="edit">Bulk edit by Product ID</option>
+              </select>
+            </label>
+              <button
               type="button"
               onClick={downloadTemplate}
               className="border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer"
             >
               <Download className="w-4 h-4" /> Download Format
+            </button>
+            <button type="button" onClick={downloadBulkEditSheet} className="border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 transition cursor-pointer">
+              <Download className="w-4 h-4" /> Download Current Page for Bulk Edit
             </button>
             <button
               type="button"
@@ -531,7 +572,7 @@ const Products = () => {
                 </>
               ) : (
                 <>
-                  <CheckCircle2 className="w-4 h-4" /> Import Valid Rows
+              <CheckCircle2 className="w-4 h-4" /> {importMode === "edit" ? "Update Valid Rows" : "Import Valid Rows"}
                 </>
               )}
             </button>
@@ -598,7 +639,7 @@ const Products = () => {
             <div>
               <h3 className="font-semibold text-gray-800">Excel Preview</h3>
               <p className="text-sm text-gray-500">
-                Edit images and descriptions below. Other values come from Excel; correct them in the file and upload again.
+                {importMode === "edit" ? "Rows are matched by Product ID. Edit images and descriptions below before updating." : "Edit images and descriptions below before importing."}
               </p>
             </div>
             <div className="flex items-center gap-2 text-sm">
@@ -621,7 +662,7 @@ const Products = () => {
             <table className="min-w-[1000px] w-full text-sm text-left text-gray-700">
               <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
                 <tr>
-                  <th className="px-4 py-3">Row</th>
+                  <th className="px-4 py-3">Row {importMode === "edit" ? "/ Product ID" : ""}</th>
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Category</th>
                   <th className="px-4 py-3">Price</th>
@@ -636,7 +677,7 @@ const Products = () => {
               <tbody>
                 {importRows.map((row) => (
                   <tr key={row.rowNumber} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-800">{row.rowNumber}</td>
+                    <td className="px-4 py-3 font-medium text-gray-800">{row.rowNumber}{importMode === "edit" && <div className="text-xs text-gray-500">{row.productId || "Missing ID"}</div>}</td>
                     <td className="px-4 py-3">{row.title || "-"}</td>
                     <td className="px-4 py-3">{row.category || "-"}</td>
                     <td className="px-4 py-3">Rs. {row.price ?? "-"}</td>
@@ -646,7 +687,10 @@ const Products = () => {
                     <td className="px-4 py-3">
                       <textarea aria-label={'Description for ' + row.title} className="border rounded p-2 min-w-48" rows={3} disabled={importing} value={row.description} onChange={event => updateImportRow(row.rowNumber, { description: event.target.value })} placeholder="Add description" />
                     </td>
-                    <td className="px-4 py-3 min-w-64">
+                    <td className="px-4 py-3 min-w-64" onPaste={event => {
+                      const files = Array.from(event.clipboardData?.items || []).map(item => item.kind === "file" ? item.getAsFile() : null).filter(Boolean);
+                      if (files.length) { event.preventDefault(); selectImportImages(row, [...row.imageFiles.map(image => image.file), ...files]); }
+                    }}>
                       <div className="flex gap-2 flex-wrap mb-2">
                         {row.images.map((url, index) => <div key={index}>
                           <img src={resolveImageUrl(url)} alt={row.title} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />
@@ -655,6 +699,8 @@ const Products = () => {
                         {row.imageFiles.map(image => <img key={image.url} src={resolveImageUrl(image.url)} alt={image.file.name} loading="lazy" decoding="async" width={48} height={48} className="w-12 h-12 object-cover rounded" />)}
                       </div>
                       <input aria-label={'Images for ' + row.title} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple disabled={importing} onChange={event => { selectImportImages(row, event.target.files); event.target.value = ""; }} className="max-w-64 text-xs" />
+                      <input aria-label={'Image URLs for ' + row.title} disabled={importing} className="mt-2 w-full border rounded p-1 text-xs" value={row.images.join(", ")} onChange={event => updateImportRow(row.rowNumber, { images: event.target.value.split(/[\n,|;]/).map(url => url.trim()).filter(Boolean) })} placeholder="Paste image URLs, separated by commas" />
+                      <p className="text-xs text-gray-500 mt-1">Click this image area and press Ctrl+V to add a copied image.</p>
                       {row.imageFiles.length > 0 && <button type="button" disabled={importing} className="block text-xs mt-2 text-red-600" onClick={() => selectImportImages(row, [])}>Clear selected images</button>}
                       <p className="text-xs text-gray-500 mt-1">Up to 5 new images, 10 MB each. Optional.</p>
                     </td>
@@ -992,6 +1038,16 @@ const Products = () => {
                   <p className="text-xs text-gray-400 mt-1">
                     Supports paste, drag and drop, and file upload
                   </p>
+                </div>
+
+                <div className="mt-3 flex gap-2">
+                  <input type="url" value={imageUrlInput} onChange={event => setImageUrlInput(event.target.value)} placeholder="https://... image URL" className="min-w-0 flex-1 border rounded-md p-2 text-sm" aria-label="Image URL" />
+                  <button type="button" className="px-3 py-2 rounded-md bg-gray-100 text-sm hover:bg-gray-200" onClick={() => {
+                    const url = imageUrlInput.trim();
+                    if (!/^https?:\/\//i.test(url)) { toast.error("Enter a valid http or https image URL."); return; }
+                    setFormData(previous => ({ ...previous, images: [...previous.images, { preview: url, isExisting: true }] }));
+                    setImageUrlInput("");
+                  }}>Add URL</button>
                 </div>
 
                 <div className="mt-2">

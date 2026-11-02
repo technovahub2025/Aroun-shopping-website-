@@ -38,6 +38,7 @@ const parseImageList = (value) => {
 };
 
 export const normalizeExcelRow = (row, index) => {
+  const productId = String(readRowValue(row, ["productid", "id", "_id"])).trim();
   const title = String(readRowValue(row, ["title", "producttitle", "name", "product"])).trim();
   const description = String(
     readRowValue(row, ["description", "details", "about"])
@@ -75,6 +76,7 @@ export const normalizeExcelRow = (row, index) => {
 
   return {
     rowNumber: index + 2,
+    productId,
     title,
     description,
     category,
