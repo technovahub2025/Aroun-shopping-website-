@@ -1,9 +1,10 @@
 # Password reset email setup
 
-Password reset email uses the Resend HTTPS API, which works on hosting plans that
-block outbound SMTP. Create a Resend account, verify a sending domain, and create
-an API key. Add these environment variables to the backend (including Render's
-service environment):
+Password reset email and order delivery notifications use the Resend HTTPS API,
+which works on hosting plans that block outbound SMTP. When an admin changes an
+order status to `Delivered`, the customer receives a completion email. Create a
+Resend account, verify a sending domain, and create an API key. Add these
+environment variables to the backend (including Render's service environment):
 
 ```env
 RESEND_API_KEY=re_your_api_key

@@ -4,6 +4,7 @@ const Cart = require('../models/Cart');
 const Product = require('../models/productModel');
 const mongoose = require('mongoose');
 const { ORDER_STATUSES } = require('../utils/orderStatus');
+const { sendOrderCompletionEmail } = require('../utils/orderCompletionEmail');
 const validId = (id) => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
 
 // Create order from cart or items passed in body
@@ -151,9 +152,18 @@ exports.updateOrderStatus = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
+    const wasDelivered = order.status === 'Delivered';
     order.status = status;
 
     await order.save();
+    if (status === 'Delivered' && !wasDelivered && order.shipping?.email) {
+      try {
+        await sendOrderCompletionEmail(order);
+      } catch (emailError) {
+        // The order is already saved; an email outage must not undo the status update.
+        console.error('Order completion email failed', String(order._id), emailError.message);
+      }
+    }
     if (status === 'Confirmed') {
       await push.enqueue({ key: `order-confirmed:${order._id}`, user: order.user,
         title: 'Order confirmed', body: 'Your order has been confirmed.',
