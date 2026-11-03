@@ -8,14 +8,76 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import AdminRoutes from "./Routes";
 
 // CHANGE THIS PATH ONLY IF YOUR API FILE IS IN A DIFFERENT LOCATION
 import apiClient from "../../../api/apiClient";
+import productApi from "../../../api/productApi";
+import orderApi from "../../../api/orderApi";
+import { toast } from "react-toastify";
 const LayoutDashboard = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [exportingBackup, setExportingBackup] = useState(false);
+
+  const exportBackup = async () => {
+    setExportingBackup(true);
+    try {
+      const XLSX = await import("xlsx");
+      const fetchProducts = async (deleted) => {
+        const items = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const { data } = await productApi.getAdminBatch({ deleted, page, limit: 100 });
+          items.push(...(data.items || []));
+          totalPages = data.totalPages || 1;
+          page += 1;
+        } while (page <= totalPages);
+        return items;
+      };
+
+      const [products, deletedProducts, { data: orders }] = await Promise.all([
+        fetchProducts(false),
+        fetchProducts(true),
+        orderApi.listAll(),
+      ]);
+      const productRows = (rows) => rows.map(({ _id, title, description, category, type, price, mrp, stock, rating, discount, images, isDeleted, deletedAt, createdAt, updatedAt }) => ({
+        productId: _id, title, description, category, type, price, mrp, stock, rating, discount,
+        imageUrls: Array.isArray(images) ? images.join(", ") : "", isDeleted, deletedAt, createdAt, updatedAt,
+      }));
+      const orderRows = (orders || []).map((order) => ({
+        orderId: order._id,
+        customerName: [order.shipping?.firstName, order.shipping?.lastName].filter(Boolean).join(" "),
+        email: order.shipping?.email || "",
+        phone: order.shipping?.phone || "",
+        address: [order.shipping?.street, order.shipping?.city, order.shipping?.state, order.shipping?.country, order.shipping?.zipcode].filter(Boolean).join(", "),
+        items: (order.items || []).map(item => `${item.name} x ${item.quantity}`).join("; "),
+        total: order.totalPrice,
+        paymentMethod: order.payment?.method || "",
+        paymentStatus: order.payment?.status || "",
+        transactionId: order.payment?.transactionId || "",
+        status: order.status,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+      }));
+
+      const workbook = XLSX.utils.book_new();
+      const addSheet = (rows, name) => XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), name);
+      addSheet(productRows(products), "Products");
+      addSheet(productRows(deletedProducts), "Deleted Products");
+      addSheet(orderRows(orders || []), "Orders");
+      XLSX.writeFile(workbook, `admin-backup-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success(`Backup exported: ${products.length} products, ${deletedProducts.length} deleted products, ${(orders || []).length} orders.`);
+    } catch (error) {
+      console.error("Admin backup export failed:", error);
+      toast.error(error?.response?.data?.message || "Could not export the admin backup. Please try again.");
+    } finally {
+      setExportingBackup(false);
+    }
+  };
 
   const [storageStatus, setStorageStatus] = useState({
     loading: true,
@@ -139,6 +201,10 @@ const LayoutDashboard = () => {
 
           {/* Navigation */}
           <nav className="mt-4 flex flex-col space-y-1 px-4 flex-shrink-0">
+            <button type="button" onClick={exportBackup} disabled={exportingBackup} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200 disabled:opacity-50 text-left" title="Export all admin data to an Excel workbook">
+              <FileSpreadsheet className="w-5 h-5 text-green-700" />
+              <span>{exportingBackup ? "Creating Backup..." : "Export Excel Backup"}</span>
+            </button>
             <Link to="/admin/orders" onClick={() => setIsOpen(false)} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-200">
               <ShoppingCart className="w-5 h-5" />
               <span>Orders</span>
