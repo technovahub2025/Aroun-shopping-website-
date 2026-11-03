@@ -4,7 +4,7 @@ const Cart = require('../models/Cart');
 const Product = require('../models/productModel');
 const mongoose = require('mongoose');
 const { ORDER_STATUSES } = require('../utils/orderStatus');
-const { sendOrderCompletionEmail } = require('../utils/orderCompletionEmail');
+const { sendOrderCompletionEmail, sendOrderConfirmationEmail } = require('../utils/orderCompletionEmail');
 const validId = (id) => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
 
 // Create order from cart or items passed in body
@@ -70,6 +70,15 @@ exports.createOrder = async (req, res) => {
     }
 
     const order = await Order.create(orderData);
+
+    if (order.shipping?.email) {
+      try {
+        await sendOrderConfirmationEmail(order);
+      } catch (emailError) {
+        // Email delivery should not undo an order that has already been saved.
+        console.error('Order confirmation email failed', String(order._id), emailError.message);
+      }
+    }
 
     // Optionally clear cart
     try {

@@ -32,10 +32,44 @@ async function sendOrderCompletionEmail(order) {
   return response.json();
 }
 
+async function sendOrderConfirmationEmail(order) {
+  const { RESEND_API_KEY, RESEND_FROM } = process.env;
+  if (!RESEND_API_KEY || !RESEND_FROM) {
+    throw Object.assign(new Error('Order email configuration is incomplete'), { code: 'EMAIL_CONFIG' });
+  }
+
+  const customerName = [order.shipping?.firstName, order.shipping?.lastName].filter(Boolean).join(' ') || 'Customer';
+  const orderId = String(order._id);
+  const items = (order.items || []).map(item => `${item.name || 'Item'} x ${item.quantity}`).join('\n');
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [order.shipping.email],
+      subject: `Order confirmed: ${orderId}`,
+      text: `Hi ${customerName},\n\nThank you for your order with Aroun Store.\n\nOrder ID: ${orderId}\nItems:\n${items}\n\nTotal: ₹${order.totalPrice}\nPayment method: ${order.payment?.method || 'unknown'}\nPayment status: ${order.payment?.status || 'pending'}`,
+      html: `<p>Hi ${escapeHtml(customerName)},</p><p>Thank you for your order with Aroun Store.</p><p>Order ID: ${escapeHtml(orderId)}</p><ul>${(order.items || []).map(item => `<li>${escapeHtml(item.name || 'Item')} × ${escapeHtml(item.quantity)}</li>`).join('')}</ul><p>Total: ₹${escapeHtml(order.totalPrice)}</p><p>Payment method: ${escapeHtml(order.payment?.method || 'unknown')} (${escapeHtml(order.payment?.status || 'pending')})</p>`,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw Object.assign(new Error(`Email API request failed (${response.status}): ${details.slice(0, 500)}`), {
+      code: 'EMAIL_API_ERROR',
+    });
+  }
+  return response.json();
+}
+
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, character => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[character]);
 }
 
-module.exports = { sendOrderCompletionEmail };
+module.exports = { sendOrderCompletionEmail, sendOrderConfirmationEmail };
