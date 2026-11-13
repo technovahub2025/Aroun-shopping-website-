@@ -4,7 +4,7 @@ export default function useCatalogPagination(fetchPage, params = {}) {
   const paramsKey = JSON.stringify(params);
   const [revision, setRevision] = useState(0);
   const [attempt, setAttempt] = useState(0);
-  const filterKey = JSON.stringify([paramsKey, revision]);
+  const filterKey = paramsKey;
   const [navigation, setNavigation] = useState({ key: filterKey, page: 1 });
   const current = navigation.key === filterKey ? navigation : { key: filterKey, page: 1 };
   if (navigation.key !== filterKey) setNavigation(current);
@@ -17,7 +17,10 @@ export default function useCatalogPagination(fetchPage, params = {}) {
   const error = result.key === requestKey ? result.error : '';
   const totalPages = visible?.totalPages || (result.filterKey === filterKey ? result.totalPages : 1);
   const page = !loading && !error ? (visible?.page || current.page) : current.page;
-  const reload = useCallback(() => setRevision(value => value + 1), []);
+  const reload = useCallback(({ preservePage = false } = {}) => {
+    if (!preservePage) setNavigation({ key: filterKey, page: 1 });
+    setRevision(value => value + 1);
+  }, [filterKey]);
   const retry = useCallback(() => setAttempt(value => value + 1), []);
 
   useEffect(() => {

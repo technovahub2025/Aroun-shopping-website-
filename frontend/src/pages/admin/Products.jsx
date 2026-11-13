@@ -287,7 +287,7 @@ const Products = () => {
         toast.success("Product added successfully!");
       }
 
-      reload();
+      reload({ preservePage: Boolean(editingProduct) });
       setShowModal(false);
     } catch (err) {
       console.error(err);
