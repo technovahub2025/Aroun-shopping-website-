@@ -17,10 +17,7 @@ export default function useCatalogPagination(fetchPage, params = {}) {
   const error = result.key === requestKey ? result.error : '';
   const totalPages = visible?.totalPages || (result.filterKey === filterKey ? result.totalPages : 1);
   const page = !loading && !error ? (visible?.page || current.page) : current.page;
-  const reload = useCallback(({ preservePage = false } = {}) => {
-    if (!preservePage) setNavigation({ key: filterKey, page: 1 });
-    setRevision(value => value + 1);
-  }, [filterKey]);
+  const reload = useCallback(() => setRevision(value => value + 1), []);
   const retry = useCallback(() => setAttempt(value => value + 1), []);
 
   useEffect(() => {
@@ -33,6 +30,7 @@ export default function useCatalogPagination(fetchPage, params = {}) {
         const { data } = await fetchPage({ ...params, page }, { signal: controller.signal });
         if (controller.signal.aborted) return;
         if (!Array.isArray(data.items) || !Number.isInteger(data.totalPages) || data.totalPages < 1 || !Number.isInteger(data.page)) throw new Error('Invalid pagination response');
+        if (data.page !== page) setNavigation({ key: filterKey, page: data.page });
         setResult({ ...data, key: requestKey, filterKey, error: '', pending: false });
       } catch (err) {
         if (!controller.signal.aborted) setResult(previous => ({ ...previous, key: requestKey,
